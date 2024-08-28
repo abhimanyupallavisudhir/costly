@@ -3,9 +3,11 @@ import typing
 import random
 from faker import Faker
 from pydantic import BaseModel
+from costly.costlog import Costlog
+from costly.estimators.llm_api_estimation import LLM_API_Estimation
 
 
-class FakerFactory:
+class LLM_Simulator_Faker:
     """
     Main things you would like to subclass:
     - _fake_custom: to add highest-priority/overriding behaviour for your own types
@@ -15,7 +17,7 @@ class FakerFactory:
     Example:
 
     ```python
-    class MySimulator(FakerFactory):
+    class MySimulator(LLM_Simulator_Faker):
 
         tryfuncs = super().tryfuncs + [
             {"func": _fake_pandas_df, "priority": 100},
@@ -55,10 +57,35 @@ class FakerFactory:
     FAKER = Faker()
 
     @staticmethod
+    def simulate_llm_call(
+        input_string: str,
+        model: str = None,
+        response_model: type = str,
+        cost_log: Costlog = None,
+        description: list[str] = None,
+    ) -> dict:
+        """
+        Simulate an LLM call.
+        """
+        response_model = response_model or str
+        response = LLM_Simulator_Faker.fake(response_model)
+        if cost_log is not None:
+            assert model is not None, "model is required for tracking costs"
+            with cost_log.new_item() as (item, _):
+                cost_item = LLM_API_Estimation.get_cost_item_simulating(
+                    input_string=input_string,
+                    model=model,
+                    description=description,
+                    # output_string=response, # not needed
+                )
+                item.update(cost_item)
+        return response
+
+    @staticmethod
     def fake(t: type):
         # sort tryfuncs by priority
         try_funcs_in_order = sorted(
-            FakerFactory.tryfuncs, key=lambda x: x["priority"], reverse=True
+            LLM_Simulator_Faker.tryfuncs, key=lambda x: x["priority"], reverse=True
         )
         for try_func in try_funcs_in_order:
             try:
@@ -72,16 +99,16 @@ class FakerFactory:
         if t == type(None):
             return None
         elif isinstance(t, types.UnionType):
-            t = FakerFactory.FAKER.random_element(elements=t.__args__)
-            return FakerFactory.fake(t)
+            t = LLM_Simulator_Faker.FAKER.random_element(elements=t.__args__)
+            return LLM_Simulator_Faker.fake(t)
         elif t == str:
-            return FakerFactory.FAKER.text(max_nb_chars=int(600 * 4.5))
+            return LLM_Simulator_Faker.FAKER.text(max_nb_chars=int(600 * 4.5))
         elif t == int:
-            return FakerFactory.FAKER.random_int(min=0, max=100)
+            return LLM_Simulator_Faker.FAKER.random_int(min=0, max=100)
         elif t == float:
             return random.random() * 40 - 20
         elif t == bool:
-            return FakerFactory.FAKER.random_element(elements=[True, False])
+            return LLM_Simulator_Faker.FAKER.random_element(elements=[True, False])
         else:
             raise ValueError(f"Unsupported type: {t}")
 
@@ -90,23 +117,23 @@ class FakerFactory:
         origin, args = t.__origin__, t.__args__
         if origin == list:
             return [
-                FakerFactory.fake(args[0])
-                for _ in range(FakerFactory.FAKER.random_int(min=0, max=10))
+                LLM_Simulator_Faker.fake(args[0])
+                for _ in range(LLM_Simulator_Faker.FAKER.random_int(min=0, max=10))
             ]
         elif origin == dict:
             return {
-                FakerFactory.fake(args[0]): FakerFactory.fake(args[1])
-                for _ in range(FakerFactory.FAKER.random_int(min=0, max=10))
+                LLM_Simulator_Faker.fake(args[0]): LLM_Simulator_Faker.fake(args[1])
+                for _ in range(LLM_Simulator_Faker.FAKER.random_int(min=0, max=10))
             }
         elif origin == tuple:
-            return tuple(FakerFactory.fake(args[i]) for i in range(len(args)))
+            return tuple(LLM_Simulator_Faker.fake(args[i]) for i in range(len(args)))
         else:
             raise ValueError(f"Unsupported type: {t}")
 
     @staticmethod
     def _fake_redirect(t: type):
-        if t in FakerFactory.redirects:
-            return FakerFactory.fake(FakerFactory.redirects[t])
+        if t in LLM_Simulator_Faker.redirects:
+            return LLM_Simulator_Faker.fake(LLM_Simulator_Faker.redirects[t])
         else:
             raise ValueError(f"Unsupported type: {t}")
 
@@ -115,25 +142,25 @@ class FakerFactory:
         assert issubclass(t, BaseModel)
         factory_dict = {}
         for name, field in t.model_fields.items():
-            factory_dict[name] = FakerFactory.fake(field.type_)
+            factory_dict[name] = LLM_Simulator_Faker.fake(field.type_)
         return t(**factory_dict)
 
     @staticmethod
     def _fake_datetime(t: type):
         assert t.__module__ == "datetime"
         if t.__name__ == "datetime":
-            return FakerFactory.FAKER.date_time_this_decade()
+            return LLM_Simulator_Faker.FAKER.date_time_this_decade()
         elif t.__name__ == "date":
-            return FakerFactory.FAKER.date_this_decade()
+            return LLM_Simulator_Faker.FAKER.date_this_decade()
         elif t.__name__ == "time":
-            return FakerFactory.FAKER.time_object()
+            return LLM_Simulator_Faker.FAKER.time_object()
         else:
             raise ValueError(f"Unsupported type: {t}")
 
     @staticmethod
     def _fake_uuid(t: type):
         assert t.__module__ == "uuid" and t.__name__ == "UUID"
-        return FakerFactory.FAKER.uuid4(cast_to=None)
+        return LLM_Simulator_Faker.FAKER.uuid4(cast_to=None)
 
     @staticmethod
     def _fake_typing(t: type):
@@ -141,16 +168,16 @@ class FakerFactory:
         if t.__name__ == "Any":
             t = object
         elif t.__name__ == "Union":
-            t = FakerFactory.FAKER.random_element(elements=t.__args__)
+            t = LLM_Simulator_Faker.FAKER.random_element(elements=t.__args__)
         elif t.__name__ == "Optional":
-            # t = FakerFactory.FAKER.random_element(elements=t.__args__)
+            # t = LLM_Simulator_Faker.FAKER.random_element(elements=t.__args__)
             # If you don't want to ever return None, uncomment the above line
-            t = FakerFactory.FAKER.random_element(elements=[type(None), t.__args__[0]])
+            t = LLM_Simulator_Faker.FAKER.random_element(elements=[type(None), t.__args__[0]])
         elif typing.get_origin(t) is not None:
             t = typing.get_origin(t)
         else:
             raise ValueError(f"Unsupported type: {t}")
-        return FakerFactory.fake(t)
+        return LLM_Simulator_Faker.fake(t)
 
     @staticmethod
     def _fake_custom(t: type):
