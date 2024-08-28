@@ -1,12 +1,10 @@
 import tiktoken
 import logging
 from io import StringIO
-from instructor import Instructor
 from pydantic import BaseModel
 import json
 import warnings
 from unittest.mock import patch
-
 
 class LLM_API_Estimation:
     """Library of functions for creating cost items from LLM API calls.
@@ -152,7 +150,7 @@ class LLM_API_Estimation:
     @staticmethod
     def get_raw_prompt_instructor(
         messages: list[dict[str, str]],
-        client: Instructor,
+        client, #: "Instructor",
         model: str,
         response_model: BaseModel,
     ):
