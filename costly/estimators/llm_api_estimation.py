@@ -8,7 +8,7 @@ import warnings
 from unittest.mock import patch
 
 
-class LLMAPIEstimation:
+class LLM_API_Estimation:
     """Library of functions for creating cost items from LLM API calls.
     You may subclass this and override any of the attributes or methods.
       
@@ -106,7 +106,7 @@ class LLMAPIEstimation:
     def get_model(model: str, supported_models: list = None):
         """Get model in supported_models with the longest prefix matching model"""
         if supported_models is None:
-            supported_models = LLMAPIEstimation.PRICES.keys()
+            supported_models = LLM_API_Estimation.PRICES.keys()
 
         matching_keys = [key for key in supported_models if model.startswith(key)]
         if not matching_keys:
@@ -118,9 +118,9 @@ class LLMAPIEstimation:
     def get_prices(model: str, price_dict: dict = None):
         """Get prices for a model"""
         if price_dict is None:
-            price_dict = LLMAPIEstimation.PRICES
+            price_dict = LLM_API_Estimation.PRICES
 
-        return price_dict[LLMAPIEstimation.get_model(model, price_dict.keys())]
+        return price_dict[LLM_API_Estimation.get_model(model, price_dict.keys())]
 
     @staticmethod
     def tokenize(input_string: str, model: str) -> int:
@@ -133,7 +133,7 @@ class LLMAPIEstimation:
             "text-embedding-3-large",
         ]
         try:
-            encoding = tiktoken.encoding_for_model(LLMAPIEstimation.get_model(model, supported_models))
+            encoding = tiktoken.encoding_for_model(LLM_API_Estimation.get_model(model, supported_models))
         except:
             encoding = tiktoken.get_encoding("cl100k_base")
         return len(encoding.encode(input_string))
@@ -180,7 +180,7 @@ class LLMAPIEstimation:
         for line in log_contents.splitlines():
             if "Instructor Request" in line:
                 line = line.split("Instructor Request: ")[1]
-                return LLMAPIEstimation._process_raw_prompt(line)
+                return LLM_API_Estimation._process_raw_prompt(line)
 
         warnings.warn(
             "No raw prompt found in logs. Maybe anthropic "
@@ -286,7 +286,7 @@ class LLMAPIEstimation:
         model: str,
         **kwargs,
     ) -> dict[str, float]:
-        prices = LLMAPIEstimation.get_prices(model)
+        prices = LLM_API_Estimation.get_prices(model)
         cost_input_tokens = input_tokens * prices["input_tokens"]
         cost_output_tokens_min = output_tokens_min * prices["output_tokens"]
         cost_output_tokens_max = output_tokens_max * prices["output_tokens"]
@@ -318,16 +318,16 @@ class LLMAPIEstimation:
         if input_tokens is None:
             try:
                 assert input_string is not None
-                input_tokens = LLMAPIEstimation.tokenize(input_string, model)
+                input_tokens = LLM_API_Estimation.tokenize(input_string, model)
             except:
                 raise ValueError(f"Failed to tokenize input_string {input_string}")
         if output_tokens_min is None or output_tokens_max is None:
             try:
                 assert output_string is not None
-                output_tokens_min, output_tokens_max = LLMAPIEstimation.tokenize(output_string, model)
+                output_tokens_min, output_tokens_max = LLM_API_Estimation.tokenize(output_string, model)
             except:
                 try:
-                    output_tokens_min, output_tokens_max = LLMAPIEstimation.output_tokens_estimate(
+                    output_tokens_min, output_tokens_max = LLM_API_Estimation.output_tokens_estimate(
                         input_string=input_string, input_tokens=input_tokens, model=model
                     )
                 except:
@@ -347,7 +347,7 @@ class LLMAPIEstimation:
         output_string: str = None,
         **kwargs,
     ) -> dict[str, float]:
-        input_tokens, output_tokens_min, output_tokens_max = LLMAPIEstimation._get_tokens(
+        input_tokens, output_tokens_min, output_tokens_max = LLM_API_Estimation._get_tokens(
             model=model,
             input_tokens=input_tokens,
             output_tokens_min=output_tokens_min,
@@ -355,7 +355,7 @@ class LLMAPIEstimation:
             input_string=input_string,
             output_string=output_string,
         )
-        return LLMAPIEstimation._get_costitem_simulating_from_input_tokens_output_tokens(
+        return LLM_API_Estimation._get_costitem_simulating_from_input_tokens_output_tokens(
             input_tokens=input_tokens,
             output_tokens_min=output_tokens_min,
             output_tokens_max=output_tokens_max,
@@ -369,7 +369,7 @@ class LLMAPIEstimation:
     def _get_costitem_real_from_input_tokens_output_tokens_timer(
         input_tokens: int, output_tokens: int, timer: float, model: str, **kwargs
     ) -> dict[str, float]:
-        prices = LLMAPIEstimation.get_prices(model)
+        prices = LLM_API_Estimation.get_prices(model)
         cost_input_tokens = input_tokens * prices["input_tokens"]
         cost_output_tokens = output_tokens * prices["output_tokens"]
         time = timer
@@ -398,7 +398,7 @@ class LLMAPIEstimation:
         **kwargs,
     ) -> dict[str, float]:
         assert timer is not None
-        input_tokens, output_tokens_min, output_tokens_max = LLMAPIEstimation._get_tokens(
+        input_tokens, output_tokens_min, output_tokens_max = LLM_API_Estimation._get_tokens(
             model=model,
             input_tokens=input_tokens,
             output_tokens_min=output_tokens_min,
@@ -406,7 +406,7 @@ class LLMAPIEstimation:
             input_string=input_string,
             output_string=output_string,
         )
-        return LLMAPIEstimation._get_costitem_real_from_input_tokens_output_tokens_timer(
+        return LLM_API_Estimation._get_costitem_real_from_input_tokens_output_tokens_timer(
             input_tokens=input_tokens,
             output_tokens=output_tokens_min,
             timer=timer,

@@ -1,0 +1,2 @@
+{"Hi": "Hello"}
+{"cost_min": 5e-07, "cost_max": 0.0030725, "time_min": 0.0, "time_max": 73.728, "input_tokens": 1, "output_tokens_min": 0, "output_tokens_max": 2048, "calls": 1, "model": "gpt-3.5-turbo", "simulated": true, "input_string": "Hello", "output_string": null, "description": ["Simulate an LLM call"]}
