@@ -9,7 +9,50 @@ from unittest.mock import patch
 
 
 class LLMAPIEstimation:
-    """Library of functions for creating cost items from LLM API calls"""
+    """Library of functions for creating cost items from LLM API calls.
+    You may subclass this and override any of the attributes or methods.
+      
+    Attributes:
+    - PRICES: dictionary of prices for each model
+    
+    Methods to produce cost items:
+    - get_cost_item_simulating(...) -> dict[str, float]
+    - get_cost_item_real(...) -> dict[str, float]
+
+    Auxillary methods:
+    - get_model(model, supported_models=PRICES.keys()) -> model (get the model with the longest prefix matching model)
+    - get_prices(model, price_dict=PRICES) -> prices
+    - tokenize(text, model) -> input_tokens (tokenize text with tiktoken)
+    - output_tokens_estimate(input_tokens, model) -> output_tokens_min, output_tokens_max
+      (estimate output tokens for simulating)
+
+    Useful methods if using instructor:
+    - get_raw_prompt(messages, client:Instructor, response_model:BaseModel) -> str
+
+    Private methods:
+    - _get_costitem_simulating_from_input_tokens_output_tokens(...) -> dict[str, float]
+    - _get_costitem_real_from_input_tokens_output_tokens_timer(...) -> dict[str, float]
+    - _get_tokens(...) -> tuple[int, int, int]
+    - _process_raw_prompt(...) -> str
+    - _tokenize_rough(text, model) -> input_tokens
+
+    Subclassing tips:
+    - PRICES: to change the prices/times for each model, or support new models or model names e.g.
+      PRICES = super().PRICES | {"my_model": super().PRICES["gpt-4o"]}
+    - tokenize: e.g.
+      tokenize=_tokenize_rough
+    - output_tokens_estimate: to change the way you estimate output tokens for simulating
+    - get_model: e.g. if you want to just match models literally --
+      get_model=lambda model, supported_models: model 
+    - get_raw_prompt: e.g. if instructor adds a better way to see the raw prompt
+    - _process_raw_prompt: e.g. if instructor adds a better way to see the raw prompt
+    - _get_costitem_simulating_from_input_tokens_output_tokens,
+      _get_costitem_real_from_input_tokens_output_tokens_timer, 
+      get_cost_item_simulating, 
+      get_cost_item_real
+      if you're going to change these (e.g. to use this library for some purpose other than 
+      LLM API calls), maybe just define a new class
+    """
 
     PRICES = {
         "gpt-4o": {
@@ -59,17 +102,6 @@ class LLMAPIEstimation:
     time: seconds per output token
     """
 
-    """
-    Auxillary functions:
-    - get_model(model, supported_models=PRICES.keys()) -> model
-    - get_prices(model, price_dict=PRICES) -> prices
-    - tokenize(text, model) -> input_tokens
-    - tokenize_rough(text, model) -> input_tokens
-    - output_tokens_estimate(input_tokens, model) -> output_tokens_min, output_tokens_max
-    - get_raw_prompt(messages, client:Instructor, response_model:BaseModel) -> str
-    - process_raw_prompt(raw_prompt) -> str
-    """
-
     @staticmethod
     def get_model(model: str, supported_models: list = None):
         """Get model in supported_models with the longest prefix matching model"""
@@ -107,7 +139,7 @@ class LLMAPIEstimation:
         return len(encoding.encode(input_string))
 
     @staticmethod
-    def tokenize_rough(input_string: str, model: str = None) -> int:
+    def _tokenize_rough(input_string: str, model: str = None) -> int:
         "For a quick estimate, just divide by 4.5"
         return len(input_string) // 4.5
 
@@ -148,7 +180,7 @@ class LLMAPIEstimation:
         for line in log_contents.splitlines():
             if "Instructor Request" in line:
                 line = line.split("Instructor Request: ")[1]
-                return LLMAPIEstimation.process_raw_prompt(line)
+                return LLMAPIEstimation._process_raw_prompt(line)
 
         warnings.warn(
             "No raw prompt found in logs. Maybe anthropic "
@@ -157,7 +189,7 @@ class LLMAPIEstimation:
         return ""
 
     @staticmethod
-    def process_raw_prompt(input_string: str) -> str:
+    def _process_raw_prompt(input_string: str) -> str:
         try:
             # Step 1: Split at 'new_kwargs='
             split_parts = input_string.split("new_kwargs=", 1)
@@ -247,7 +279,7 @@ class LLMAPIEstimation:
     """
 
     @staticmethod
-    def get_costitem_simulating_from_input_tokens_output_tokens(
+    def _get_costitem_simulating_from_input_tokens_output_tokens(
         input_tokens: int,
         output_tokens_min: int,
         output_tokens_max: int,
@@ -275,7 +307,7 @@ class LLMAPIEstimation:
         }
         
     @staticmethod
-    def get_tokens(
+    def _get_tokens(
         model: str,
         input_tokens: int = None,
         output_tokens_min: int = None,
@@ -315,7 +347,7 @@ class LLMAPIEstimation:
         output_string: str = None,
         **kwargs,
     ) -> dict[str, float]:
-        input_tokens, output_tokens_min, output_tokens_max = LLMAPIEstimation.get_tokens(
+        input_tokens, output_tokens_min, output_tokens_max = LLMAPIEstimation._get_tokens(
             model=model,
             input_tokens=input_tokens,
             output_tokens_min=output_tokens_min,
@@ -323,7 +355,7 @@ class LLMAPIEstimation:
             input_string=input_string,
             output_string=output_string,
         )
-        return LLMAPIEstimation.get_costitem_simulating_from_input_tokens_output_tokens(
+        return LLMAPIEstimation._get_costitem_simulating_from_input_tokens_output_tokens(
             input_tokens=input_tokens,
             output_tokens_min=output_tokens_min,
             output_tokens_max=output_tokens_max,
@@ -334,7 +366,7 @@ class LLMAPIEstimation:
         )
 
     @staticmethod
-    def get_costitem_real_from_input_tokens_output_tokens_timer(
+    def _get_costitem_real_from_input_tokens_output_tokens_timer(
         input_tokens: int, output_tokens: int, timer: float, model: str, **kwargs
     ) -> dict[str, float]:
         prices = LLMAPIEstimation.get_prices(model)
@@ -366,7 +398,7 @@ class LLMAPIEstimation:
         **kwargs,
     ) -> dict[str, float]:
         assert timer is not None
-        input_tokens, output_tokens_min, output_tokens_max = LLMAPIEstimation.get_tokens(
+        input_tokens, output_tokens_min, output_tokens_max = LLMAPIEstimation._get_tokens(
             model=model,
             input_tokens=input_tokens,
             output_tokens_min=output_tokens_min,
@@ -374,7 +406,7 @@ class LLMAPIEstimation:
             input_string=input_string,
             output_string=output_string,
         )
-        return LLMAPIEstimation.get_costitem_real_from_input_tokens_output_tokens_timer(
+        return LLMAPIEstimation._get_costitem_real_from_input_tokens_output_tokens_timer(
             input_tokens=input_tokens,
             output_tokens=output_tokens_min,
             timer=timer,
