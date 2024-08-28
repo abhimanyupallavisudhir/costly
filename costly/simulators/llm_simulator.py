@@ -37,9 +37,7 @@ class LLM_Simulator:
     @staticmethod
     def fake(t: type):
         if t == str:
-            return LLM_Simulator.FAKER.text(
-                max_nb_chars=int(600 * 4.5), ext_word_list=["delve"]
-            )
+            return LLM_Simulator.FAKER.text(max_nb_chars=int(600 * 4.5))
         elif t == int:
             return LLM_Simulator.FAKER.random_int(min=0, max=100)
         elif t == float:
