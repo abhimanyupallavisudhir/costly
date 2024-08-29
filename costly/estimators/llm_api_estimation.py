@@ -36,7 +36,7 @@ class LLM_API_Estimation:
 
     Subclassing tips:
     - PRICES: to change the prices/times for each model, or support new models or model names e.g.
-      PRICES = super().PRICES | {"my_model": super().PRICES["gpt-4o"]}
+      PRICES = LLM_API_Estimation.PRICES | {"my_model": LLM_API_Estimation.PRICES["gpt-4o"]}
     - tokenize: e.g.
       tokenize=_tokenize_rough
     - output_tokens_estimate: to change the way you estimate output tokens for simulating
@@ -380,6 +380,8 @@ class LLM_API_Estimation:
             "time_max": time,
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
+            "output_tokens_min": output_tokens,
+            "output_tokens_max": output_tokens,
             "calls": 1,
             "model": model,
             "simulated": False,

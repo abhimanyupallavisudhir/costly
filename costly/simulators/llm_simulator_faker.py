@@ -1,6 +1,7 @@
 import types
 import typing
 import random
+from typing import Any
 from faker import Faker
 from pydantic import BaseModel
 from costly.costlog import Costlog
@@ -63,7 +64,7 @@ class LLM_Simulator_Faker:
         response_model: type = str,
         cost_log: Costlog = None,
         description: list[str] = None,
-    ) -> dict:
+    ) -> str | Any:
         """
         Simulate an LLM call.
         """
