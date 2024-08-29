@@ -10,7 +10,24 @@ from costly.estimators.llm_api_estimation import LLM_API_Estimation
 
 class LLM_Simulator_Faker:
     """
-    Main things you would like to subclass:
+    Main things you would likely subclass:
+    - FAKER_PARAMS: default is:
+        ```python
+        {
+            "str": {
+                "max_nb_chars": 600 * 4.5,
+            },
+            "int": {
+                "min": 0,
+                "max": 100,
+            },
+            "float": {
+                "a": -20,
+                "b": 20,
+            },
+        }
+        ```
+        Override this to make it generate different lengths of text, etc.
     - _fake_custom: to add highest-priority/overriding behaviour for your own types
     - tryfuncs: to index any new faking methods you define or change priorities
     - redirects: to change type redirects like list -> list[str], object -> str, etc.
@@ -56,6 +73,32 @@ class LLM_Simulator_Faker:
     """
 
     FAKER = Faker()
+
+    FAKER_PARAMS = {
+        "str": {
+            "max_nb_chars": 600 * 4.5,
+        },
+        "int": {
+            "min": 0,
+            "max": 100,
+        },
+        "float": {
+            "a": -20,
+            "b": 20,
+        },
+        "size_set": {
+            "min": 0,
+            "max": 10,
+        },
+        "size_dict": {
+            "min": 0,
+            "max": 10,
+        },
+        "size_list": {
+            "min": 0,
+            "max": 10,
+        },
+    }
 
     @staticmethod
     def simulate_llm_call(
@@ -103,11 +146,15 @@ class LLM_Simulator_Faker:
             t = LLM_Simulator_Faker.FAKER.random_element(elements=t.__args__)
             return LLM_Simulator_Faker.fake(t)
         elif t == str:
-            return LLM_Simulator_Faker.FAKER.text(max_nb_chars=int(600 * 4.5))
+            return LLM_Simulator_Faker.FAKER.text(
+                **LLM_Simulator_Faker.FAKER_PARAMS["str"]
+            )
         elif t == int:
-            return LLM_Simulator_Faker.FAKER.random_int(min=0, max=100)
+            return LLM_Simulator_Faker.FAKER.random_int(
+                **LLM_Simulator_Faker.FAKER_PARAMS["int"]
+            )
         elif t == float:
-            return random.random() * 40 - 20
+            return random.uniform(**LLM_Simulator_Faker.FAKER_PARAMS["float"])
         elif t == bool:
             return LLM_Simulator_Faker.FAKER.random_element(elements=[True, False])
         else:
@@ -119,15 +166,32 @@ class LLM_Simulator_Faker:
         if origin == list:
             return [
                 LLM_Simulator_Faker.fake(args[0])
-                for _ in range(LLM_Simulator_Faker.FAKER.random_int(min=0, max=10))
+                for _ in range(
+                    LLM_Simulator_Faker.FAKER.random_int(
+                        **LLM_Simulator_Faker.FAKER_PARAMS["size_list"]
+                    )
+                )
             ]
         elif origin == dict:
             return {
                 LLM_Simulator_Faker.fake(args[0]): LLM_Simulator_Faker.fake(args[1])
-                for _ in range(LLM_Simulator_Faker.FAKER.random_int(min=0, max=10))
+                for _ in range(
+                    LLM_Simulator_Faker.FAKER.random_int(
+                        **LLM_Simulator_Faker.FAKER_PARAMS["size_dict"]
+                    )
+                )
             }
         elif origin == tuple:
             return tuple(LLM_Simulator_Faker.fake(args[i]) for i in range(len(args)))
+        elif origin == set:
+            return {
+                LLM_Simulator_Faker.fake(args[0])
+                for _ in range(
+                    LLM_Simulator_Faker.FAKER.random_int(
+                        **LLM_Simulator_Faker.FAKER_PARAMS["size_set"]
+                    )
+                )
+            }
         else:
             raise ValueError(f"Unsupported type: {t}")
 
@@ -143,7 +207,7 @@ class LLM_Simulator_Faker:
         assert issubclass(t, BaseModel)
         factory_dict = {}
         for name, field in t.model_fields.items():
-            factory_dict[name] = LLM_Simulator_Faker.fake(field.type_)
+            factory_dict[name] = LLM_Simulator_Faker.fake(field.annotation)
         return t(**factory_dict)
 
     @staticmethod
@@ -173,7 +237,9 @@ class LLM_Simulator_Faker:
         elif t.__name__ == "Optional":
             # t = LLM_Simulator_Faker.FAKER.random_element(elements=t.__args__)
             # If you don't want to ever return None, uncomment the above line
-            t = LLM_Simulator_Faker.FAKER.random_element(elements=[type(None), t.__args__[0]])
+            t = LLM_Simulator_Faker.FAKER.random_element(
+                elements=[type(None), t.__args__[0]]
+            )
         elif typing.get_origin(t) is not None:
             t = typing.get_origin(t)
         else:
