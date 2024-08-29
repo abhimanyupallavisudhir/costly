@@ -14,8 +14,8 @@ class LLM_API_Estimation:
     - PRICES: dictionary of prices for each model
     
     Methods to produce cost items:
-    - get_cost_item_simulating(...) -> dict[str, float]
-    - get_cost_item_real(...) -> dict[str, float]
+    - get_cost_simulating(...) -> dict[str, float]
+    - get_cost_real(...) -> dict[str, float]
 
     Auxillary methods:
     - get_model(model, supported_models=PRICES.keys()) -> model (get the model with the longest prefix matching model)
@@ -28,8 +28,8 @@ class LLM_API_Estimation:
     - get_raw_prompt(messages, client:Instructor, response_model:BaseModel) -> str
 
     Private methods:
-    - _get_costitem_simulating_from_input_tokens_output_tokens(...) -> dict[str, float]
-    - _get_costitem_real_from_input_tokens_output_tokens_timer(...) -> dict[str, float]
+    - _get_cost_simulating_from_input_tokens_output_tokens(...) -> dict[str, float]
+    - _get_cost_real_from_input_tokens_output_tokens_timer(...) -> dict[str, float]
     - _get_tokens(...) -> tuple[int, int, int]
     - _process_raw_prompt(...) -> str
     - _tokenize_rough(text, model) -> input_tokens
@@ -44,10 +44,10 @@ class LLM_API_Estimation:
       get_model=lambda model, supported_models: model 
     - get_raw_prompt: e.g. if instructor adds a better way to see the raw prompt
     - _process_raw_prompt: e.g. if instructor adds a better way to see the raw prompt
-    - _get_costitem_simulating_from_input_tokens_output_tokens,
-      _get_costitem_real_from_input_tokens_output_tokens_timer, 
-      get_cost_item_simulating, 
-      get_cost_item_real
+    - _get_cost_simulating_from_input_tokens_output_tokens,
+      _get_cost_real_from_input_tokens_output_tokens_timer, 
+      get_cost_simulating, 
+      get_cost_real
       if you're going to change these (e.g. to use this library for some purpose other than 
       LLM API calls), maybe just define a new class
     """
@@ -135,6 +135,7 @@ class LLM_API_Estimation:
         except:
             encoding = tiktoken.get_encoding("cl100k_base")
         return len(encoding.encode(input_string))
+        
 
     @staticmethod
     def _tokenize_rough(input_string: str, model: str = None) -> int:
@@ -277,7 +278,7 @@ class LLM_API_Estimation:
     """
 
     @staticmethod
-    def _get_costitem_simulating_from_input_tokens_output_tokens(
+    def _get_cost_simulating_from_input_tokens_output_tokens(
         input_tokens: int,
         output_tokens_min: int,
         output_tokens_max: int,
@@ -322,7 +323,8 @@ class LLM_API_Estimation:
         if output_tokens_min is None or output_tokens_max is None:
             try:
                 assert output_string is not None
-                output_tokens_min, output_tokens_max = LLM_API_Estimation.tokenize(output_string, model)
+                output_tokens = LLM_API_Estimation.tokenize(output_string, model)
+                output_tokens_min, output_tokens_max = output_tokens, output_tokens
             except:
                 try:
                     output_tokens_min, output_tokens_max = LLM_API_Estimation.output_tokens_estimate(
@@ -336,7 +338,7 @@ class LLM_API_Estimation:
         return input_tokens, output_tokens_min, output_tokens_max
 
     @staticmethod
-    def get_cost_item_simulating(
+    def get_cost_simulating(
         model: str,
         input_tokens: int = None,
         output_tokens_min: int = None,
@@ -353,7 +355,7 @@ class LLM_API_Estimation:
             input_string=input_string,
             output_string=output_string,
         )
-        return LLM_API_Estimation._get_costitem_simulating_from_input_tokens_output_tokens(
+        return LLM_API_Estimation._get_cost_simulating_from_input_tokens_output_tokens(
             input_tokens=input_tokens,
             output_tokens_min=output_tokens_min,
             output_tokens_max=output_tokens_max,
@@ -364,7 +366,7 @@ class LLM_API_Estimation:
         )
 
     @staticmethod
-    def _get_costitem_real_from_input_tokens_output_tokens_timer(
+    def _get_cost_real_from_input_tokens_output_tokens_timer(
         input_tokens: int, output_tokens: int, timer: float, model: str, **kwargs
     ) -> dict[str, float]:
         prices = LLM_API_Estimation.get_prices(model)
@@ -385,7 +387,7 @@ class LLM_API_Estimation:
         }
 
     @staticmethod
-    def get_costitem_real(
+    def get_cost_real(
         model: str,
         input_tokens: int = None,
         output_tokens_min: int = None,
@@ -404,7 +406,8 @@ class LLM_API_Estimation:
             input_string=input_string,
             output_string=output_string,
         )
-        return LLM_API_Estimation._get_costitem_real_from_input_tokens_output_tokens_timer(
+        
+        return LLM_API_Estimation._get_cost_real_from_input_tokens_output_tokens_timer(
             input_tokens=input_tokens,
             output_tokens=output_tokens_min,
             timer=timer,

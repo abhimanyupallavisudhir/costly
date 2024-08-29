@@ -72,7 +72,7 @@ class LLM_Simulator_Faker:
         if cost_log is not None:
             assert model is not None, "model is required for tracking costs"
             with cost_log.new_item() as (item, _):
-                cost_item = LLM_API_Estimation.get_cost_item_simulating(
+                cost_item = LLM_API_Estimation.get_cost_simulating(
                     input_string=input_string,
                     model=model,
                     description=description,
