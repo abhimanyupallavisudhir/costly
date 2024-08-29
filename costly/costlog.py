@@ -13,7 +13,7 @@ class Costlog:
     def __init__(
         self,
         path: Path = None,
-        mode: Literal["jsonl", "memory"] = "jsonl",
+        mode: Literal["jsonl", "memory"] = "memory",
         totals_keys: set[str] = None,
     ):
         match mode:
