@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "costly"
+version = "0.1.0"
+description = "Estimate costs of complex LLM workflows in advance before spending money"
+authors = ["abhimanyu <abhimanyupallavisudhir@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+Faker = "^28.0.0"
+pydantic = "^2.8.2"
+typing-extensions = "^4.12.2"
+tiktoken = "^0.7.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
