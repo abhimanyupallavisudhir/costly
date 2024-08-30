@@ -9,6 +9,7 @@ def costly(
     simulator: Callable = LLM_Simulator_Faker.simulate_llm_call,
     estimator: Callable = LLM_API_Estimation.get_cost_real
 ):
+    
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):

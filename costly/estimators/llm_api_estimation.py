@@ -149,6 +149,10 @@ class LLM_API_Estimation:
         return [0, 2048]
 
     @staticmethod
+    def messages_to_input_string(messages: list[dict[str, str]]) -> str:
+        return "".join([m["content"] for m in messages])
+
+    @staticmethod
     def get_raw_prompt_instructor(
         messages: list[dict[str, str]],
         client, #: "Instructor",
