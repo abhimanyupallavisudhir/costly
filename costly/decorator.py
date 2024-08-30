@@ -7,9 +7,9 @@ from costly.estimators.llm_api_estimation import LLM_API_Estimation
 
 def costly(
     simulator: Callable = LLM_Simulator_Faker.simulate_llm_call,
-    estimator: Callable = LLM_API_Estimation.get_cost_real
+    estimator: Callable = LLM_API_Estimation.get_cost_real,
+    **param_mappings: dict[str, Callable]
 ):
-    
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -17,9 +17,15 @@ def costly(
             simulate = kwargs.pop('simulate', False)
             description = kwargs.pop('description', None)
 
+            # Apply parameter mappings
+            mapped_kwargs = kwargs | {
+                key: mapping(kwargs) if callable(mapping) else kwargs.get(mapping, mapping)
+                for key, mapping in param_mappings.items()
+            }
+
             if simulate:
                 return simulator(
-                    **kwargs,
+                    **mapped_kwargs,
                     cost_log=cost_log,
                     description=description
                 )
@@ -28,7 +34,7 @@ def costly(
                 with cost_log.new_item() as (item, timer):
                     output = func(*args, **kwargs)
                     cost_item = estimator(
-                        **kwargs,
+                        **mapped_kwargs,
                         output_string=output,
                         description=description,
                         timer=timer()
