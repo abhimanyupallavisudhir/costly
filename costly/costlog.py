@@ -12,7 +12,7 @@ class Costlog:
 
     def __init__(
         self,
-        path: Path = None,
+        path: Path | str = None,
         mode: Literal["jsonl", "memory"] = "memory",
         totals_keys: set[str] = None,
     ):
@@ -25,8 +25,14 @@ class Costlog:
                         f"costlog_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.jsonl",
                     )
                 else:
-                    self.path = path
-                if not self.path.exists():
+                    self.path = Path(path)
+                if self.path.exists():
+                    overwrite = input(f"Costlog file {self.path} already exists. Overwrite? (y/n) ")
+                    if overwrite != "y":
+                        raise FileExistsError(f"Costlog file {self.path} already exists.")
+                    else:
+                        self.path.unlink()
+                else:
                     self.path.parent.mkdir(parents=True, exist_ok=True)
                     with open(self.path, "w") as f:
                         jsonlines.Writer(f)
