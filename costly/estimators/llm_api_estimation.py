@@ -24,8 +24,9 @@ class LLM_API_Estimation:
     - output_tokens_estimate(input_tokens, model) -> output_tokens_min, output_tokens_max
       (estimate output tokens for simulating)
 
-    Useful methods if using instructor:
-    - get_raw_prompt(messages, client:Instructor, response_model:BaseModel) -> str
+    Methods to help convert to input_string:
+    - messages_to_input_string(messages: list[dict[str, str]]) -> str
+    - get_raw_prompt_instructor(messages: str | list[dict[str, str]], client:Instructor, response_model:BaseModel) -> str
 
     Private methods:
     - _get_cost_simulating_from_input_tokens_output_tokens(...) -> dict[str, float]
@@ -42,7 +43,7 @@ class LLM_API_Estimation:
     - output_tokens_estimate: to change the way you estimate output tokens for simulating
     - get_model: e.g. if you want to just match models literally --
       get_model=lambda model, supported_models: model 
-    - get_raw_prompt: e.g. if instructor adds a better way to see the raw prompt
+    - get_raw_prompt_instructor: e.g. if instructor adds a better way to see the raw prompt
     - _process_raw_prompt: e.g. if instructor adds a better way to see the raw prompt
     - _get_cost_simulating_from_input_tokens_output_tokens,
       _get_cost_real_from_input_tokens_output_tokens_timer, 
@@ -151,14 +152,20 @@ class LLM_API_Estimation:
     @staticmethod
     def messages_to_input_string(messages: list[dict[str, str]]) -> str:
         return "".join([m["content"] for m in messages])
-
+    
+    @staticmethod
+    def _input_string_to_messages(input_string: str) -> list[dict[str, str]]:
+        return [{"content": input_string, "role": "user"}]
+    
     @staticmethod
     def get_raw_prompt_instructor(
-        messages: list[dict[str, str]],
+        messages: str | list[dict[str, str]],
         client, #: "Instructor",
         model: str,
         response_model: BaseModel,
     ):
+        if isinstance(messages, str):
+            messages = LLM_API_Estimation._input_string_to_messages(messages)
         log_stream = StringIO()
         logger = logging.getLogger("instructor")
         logger.setLevel(logging.DEBUG)
