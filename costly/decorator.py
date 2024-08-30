@@ -4,6 +4,7 @@ from typing import Callable
 from costly.costlog import Costlog
 from costly.simulators.llm_simulator_faker import LLM_Simulator_Faker
 from costly.estimators.llm_api_estimation import LLM_API_Estimation
+from inspect import signature
 
 
 def costly(
@@ -24,20 +25,28 @@ def costly(
 
             # Apply parameter mappings
             mapped_kwargs = kwargs | {
-                key: mapping(kwargs) if callable(mapping) else kwargs.pop(mapping)
+                key: mapping(kwargs) if callable(mapping) else kwargs.get(mapping)
                 for key, mapping in param_mappings.items()
             }
 
             if simulate:
+                simulator_params = signature(simulator).parameters
+                simulator_kwargs = {
+                    k: v for k, v in mapped_kwargs.items() if k in simulator_params
+                }
                 return simulator(
-                    **mapped_kwargs, cost_log=cost_log, description=description
+                    **simulator_kwargs, cost_log=cost_log, description=description
                 )
 
             if cost_log is not None:
                 with cost_log.new_item() as (item, timer):
                     output = func(*args, **fun_kwargs)
+                    estimator_params = signature(estimator).parameters
+                    estimator_kwargs = {
+                        k: v for k, v in mapped_kwargs.items() if k in estimator_params
+                    }
                     cost_item = estimator(
-                        **mapped_kwargs,
+                        **estimator_kwargs,
                         output_string=output,
                         description=description,
                         timer=timer()

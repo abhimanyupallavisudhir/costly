@@ -19,8 +19,23 @@ def chatgpt(input_string: str, model: str) -> str:
     return output_string
 
 
-@costly(input_string="prompt", model="model_name")
+@costly(
+    input_string=(lambda kwargs: kwargs["prompt"]),
+    model=(lambda kwargs: kwargs["model_name"]),
+)
 def chatgpt2(prompt: str, model_name: str) -> str:
+    from openai import OpenAI
+
+    client = OpenAI()
+    response = client.chat.completions.create(
+        model=model_name, messages=[{"role": "user", "content": prompt}]
+    )
+    output_string = response.choices[0].message.content
+    return output_string
+
+
+@costly(input_string="prompt", model="model_name")
+def chatgpt3(prompt: str, model_name: str) -> str:
     from openai import OpenAI
 
     client = OpenAI()
@@ -33,7 +48,7 @@ def chatgpt2(prompt: str, model_name: str) -> str:
 
 @costly(
     input_string=lambda kwargs: LLM_API_Estimation.messages_to_input_string(
-        kwargs.pop("messages")
+        kwargs["messages"]
     ),
 )
 def chatgpt_messages(messages: list[dict[str, str]], model: str) -> str:
@@ -44,24 +59,18 @@ def chatgpt_messages(messages: list[dict[str, str]], model: str) -> str:
     output_string = response.choices[0].message.content
     return output_string
 
-
 client = instructor.from_openai(OpenAI())
 
 
 @costly(
-    input_string=lambda kwargs: LLM_API_Estimation.get_raw_prompt_instructor(
-        messages=kwargs.pop("input_string"),
-        client=kwargs.pop("client"),
-        model=kwargs.get("model"),
-        response_model=kwargs.get("response_model"),
-    ),
+    input_string=lambda kwargs: LLM_API_Estimation.get_raw_prompt_instructor(**kwargs),
 )
-def chatgpt_instructor(
-    input_string: str, model: str, client: Instructor, response_model: BaseModel
-) -> str:
+def chatgpt_instructor(messages: str | list[dict[str, str]], model: str, client: Instructor, response_model: BaseModel) -> str:
+    if isinstance(messages, str):
+        messages = [{"role": "user", "content": messages}]
     response = client.chat.completions.create(
         model=model,
-        messages=[{"role": "user", "content": input_string}],
+        messages=messages,
         response_model=response_model,
     )
     return response
