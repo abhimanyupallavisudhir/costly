@@ -15,7 +15,17 @@ class Costlog:
         path: Path | str = None,
         mode: Literal["jsonl", "memory"] = "memory",
         totals_keys: set[str] = None,
+        overwrite: bool = None,
     ):
+        """
+        Arguments:
+            path: Path to the costlog file. If None, the costlog will be stored in
+                the current working directory in a folder called ".costly".
+            mode: "jsonl" or "memory". "jsonl" will store the costlog in a jsonl file,
+                "memory" will store the costlog in memory which may not be suitable for large logs.
+            totals_keys: The keys to store in the totals.
+            overwrite: If the costlog file already exists, overwrite it. If None, the user will be asked. Only relevant if mode is "jsonl".
+        """
         match mode:
             case "jsonl":
                 if path is None:
@@ -27,8 +37,9 @@ class Costlog:
                 else:
                     self.path = Path(path)
                 if self.path.exists():
-                    overwrite = input(f"Costlog file {self.path} already exists. Overwrite? (y/n) ")
-                    if overwrite != "y":
+                    if overwrite is None:
+                        overwrite = input(f"Costlog file {self.path} already exists. Overwrite? (y/n) ")
+                    if overwrite not in ["y", True]:
                         raise FileExistsError(f"Costlog file {self.path} already exists.")
                     else:
                         self.path.unlink()

@@ -28,7 +28,7 @@ def test_costlog_new_item_multiple():
     assert costlog.totals["time"] == pytest.approx(0.20, abs=0.01)
 
 def test_costlog_jsonl():
-    costlog = Costlog(mode="jsonl", totals_keys={"time"}, path=Path("tests", "test_costlog.jsonl"))
+    costlog = Costlog(mode="jsonl", totals_keys={"time"}, path=Path("tests", "test_costlog.jsonl"), overwrite=True)
     with costlog.new_item() as (item, timer):
         time.sleep(0.08)
         item.update({"Hi": "Hello", "time": timer()})
