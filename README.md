@@ -10,3 +10,9 @@ pip install costly
 ## Usage
 
 See [examples.ipynb](examples.ipynb) for a quick walkthrough.
+
+## Testing
+
+```bash
+poetry run pytest -s
+```bash

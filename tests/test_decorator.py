@@ -5,7 +5,7 @@ from costly import costly, Costlog
 from costly.estimators.llm_api_estimation import LLM_API_Estimation
 from openai import OpenAI
 from instructor import Instructor
-from .example_functions import (
+from tests.example_functions import (
     chatgpt,
     chatgpt2,
     chatgpt3,

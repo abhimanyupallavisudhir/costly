@@ -1,4 +1,5 @@
 import instructor
+from typing import Any
 from pydantic import BaseModel
 from costly import costly
 from costly.estimators.llm_api_estimation import LLM_API_Estimation
@@ -8,6 +9,17 @@ from instructor import Instructor
 class PERSONINFO(BaseModel):
     name: str
     age: int
+
+class FOOMODEL(BaseModel):
+    name: str
+    age: int
+    bmi: float
+    metadata: dict[str, Any] | None = None
+
+
+class BARMODEL(BaseModel):
+    foo: FOOMODEL
+    fookids: list[FOOMODEL]
 
 CLIENT = instructor.from_openai(OpenAI())
 

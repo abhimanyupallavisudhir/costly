@@ -4,19 +4,7 @@ from typing import Optional, Union, Any
 from pydantic import BaseModel
 from costly.simulators.llm_simulator_faker import LLM_Simulator_Faker
 from costly.utils import isinstance_better
-
-
-class FooModel(BaseModel):
-    name: str
-    age: int
-    bmi: float
-    metadata: dict[str, Any] | None = None
-
-
-class BarModel(BaseModel):
-    foo: FooModel
-    fookids: list[FooModel]
-
+from tests.example_functions import FOOMODEL, BARMODEL
 
 TYPES = {
     int,
@@ -32,9 +20,9 @@ TYPES = {
     dict[str, int],
     dict[str, float],
     dict[str, Optional[list]] | str | None,
-    FooModel,
-    list[FooModel],
-    BarModel,
+    FOOMODEL,
+    list[FOOMODEL],
+    BARMODEL,
     NoneType,
     Union[int, str],
     float | str,
