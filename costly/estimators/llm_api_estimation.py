@@ -403,26 +403,25 @@ class LLM_API_Estimation:
     def get_cost_real(
         model: str,
         input_tokens: int = None,
-        output_tokens_min: int = None,
-        output_tokens_max: int = None,
+        output_tokens: int = None,
         input_string: str = None,
         output_string: str = None,
         timer: float = None,
         **kwargs,
     ) -> dict[str, float]:
         assert timer is not None
-        input_tokens, output_tokens_min, output_tokens_max = LLM_API_Estimation._get_tokens(
+        input_tokens, output_tokens, _ = LLM_API_Estimation._get_tokens(
             model=model,
             input_tokens=input_tokens,
-            output_tokens_min=output_tokens_min,
-            output_tokens_max=output_tokens_max,
+            output_tokens_min=output_tokens,
+            output_tokens_max=output_tokens,
             input_string=input_string,
             output_string=output_string,
         )
         
         return LLM_API_Estimation._get_cost_real_from_input_tokens_output_tokens_timer(
             input_tokens=input_tokens,
-            output_tokens=output_tokens_min,
+            output_tokens=output_tokens,
             timer=timer,
             model=model,
             input_string=input_string,

@@ -1,2 +1,2 @@
 from costly.costlog import Costlog
-from costly.decorator import costly
+from costly.decorator import costly, CostlyResponse
