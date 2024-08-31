@@ -135,7 +135,8 @@ class LLM_API_Estimation:
             encoding = tiktoken.encoding_for_model(LLM_API_Estimation.get_model(model, supported_models))
         except:
             encoding = tiktoken.get_encoding("cl100k_base")
-        return len(encoding.encode(input_string))
+        return len(encoding.encode(input_string)) + 7 
+    # HACK: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
         
 
     @staticmethod
