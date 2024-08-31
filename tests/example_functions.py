@@ -1,7 +1,7 @@
 import instructor
 from typing import Any
 from pydantic import BaseModel
-from costly import costly
+from costly import costly, CostlyResponse
 from costly.estimators.llm_api_estimation import LLM_API_Estimation
 from openai import OpenAI
 from instructor import Instructor
@@ -31,8 +31,14 @@ def chatgpt(input_string: str, model: str) -> str:
     response = client.chat.completions.create(
         model=model, messages=[{"role": "user", "content": input_string}]
     )
-    output_string = response.choices[0].message.content
-    return output_string
+    return CostlyResponse(
+        output=response.choices[0].message.content,
+        cost_info={
+            "input_tokens": response.usage.prompt_tokens,
+            "output_tokens": response.usage.completion_tokens,
+        },
+    )
+
 
 
 @costly(
@@ -46,8 +52,13 @@ def chatgpt2(prompt: str, model_name: str) -> str:
     response = client.chat.completions.create(
         model=model_name, messages=[{"role": "user", "content": prompt}]
     )
-    output_string = response.choices[0].message.content
-    return output_string
+    return CostlyResponse(
+        output=response.choices[0].message.content,
+        cost_info={
+            "input_tokens": response.usage.prompt_tokens,
+            "output_tokens": response.usage.completion_tokens,
+        },
+    )
 
 
 @costly(input_string="prompt", model="model_name")
@@ -58,9 +69,13 @@ def chatgpt3(prompt: str, model_name: str) -> str:
     response = client.chat.completions.create(
         model=model_name, messages=[{"role": "user", "content": prompt}]
     )
-    output_string = response.choices[0].message.content
-    return output_string
-
+    return CostlyResponse(
+        output=response.choices[0].message.content,
+        cost_info={
+            "input_tokens": response.usage.prompt_tokens,
+            "output_tokens": response.usage.completion_tokens,
+        },
+    )
 
 @costly(
     input_string=lambda kwargs: LLM_API_Estimation.messages_to_input_string(
@@ -72,8 +87,13 @@ def chatgpt_messages(messages: list[dict[str, str]], model: str) -> str:
 
     client = OpenAI()
     response = client.chat.completions.create(model=model, messages=messages)
-    output_string = response.choices[0].message.content
-    return output_string
+    return CostlyResponse(
+        output=response.choices[0].message.content,
+        cost_info={
+            "input_tokens": response.usage.prompt_tokens,
+            "output_tokens": response.usage.completion_tokens,
+        },
+    )
 
 
 @costly(
@@ -87,9 +107,16 @@ def chatgpt_instructor(
 ) -> str:
     if isinstance(messages, str):
         messages = [{"role": "user", "content": messages}]
-    response = client.chat.completions.create(
+    response = client.chat.completions.create_with_completion(
         model=model,
         messages=messages,
         response_model=response_model,
     )
-    return response
+    output_string, cost_info = response
+    return CostlyResponse(
+        output=output_string,
+        cost_info={
+            "input_tokens": cost_info.usage.prompt_tokens,
+            "output_tokens": cost_info.usage.completion_tokens
+        }
+    )

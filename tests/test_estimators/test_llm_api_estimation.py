@@ -23,10 +23,10 @@ PROMPTS = [
     "Write a short story.",
     "Write the bubblesort algorithm in Python.",
 ]
-MODELS = LLM_API_Estimation.PRICES.keys()
+MODELS = LLM_API_Estimation.PRICES.keys() # TODO implement tests for non-OpenAI models
 MODELS_OPENAI = [model for model in MODELS if model.startswith("gpt")]
 PARAMSS = [
-    {"input_string": prompt, "model": model} for model in MODELS for prompt in PROMPTS
+    {"input_string": prompt, "model": model} for model in MODELS_OPENAI for prompt in PROMPTS
 ]
 
 PARAMSS_INSTRUCTOR_ = [
@@ -58,31 +58,31 @@ def check_cost_estimates(real_cost, sim_cost):
             "check": 0.8 * real_cost["input_tokens"]
             <= sim_cost["input_tokens"]
             <= 1.2 * real_cost["input_tokens"],
-            "message": "Input tokens estimate not within 20pc of truth",
+            "message": f"Input tokens estimate {sim_cost['input_tokens']} not within 20pc of truth {real_cost['input_tokens']}",
         },
         {
             "check": sim_cost["output_tokens_min"] <= real_cost["output_tokens_min"],
-            "message": "Output tokens estimate minimum exceeds truth",
+            "message": f"Output tokens estimate minimum {sim_cost['output_tokens_min']} exceeds truth {real_cost['output_tokens_min']}",
         },
         {
             "check": real_cost["output_tokens_max"] <= sim_cost["output_tokens_max"],
-            "message": "Output tokens estimate maximum is less than truth",
+            "message": f"Output tokens estimate maximum {sim_cost['output_tokens_max']} is less than truth {real_cost['output_tokens_max']}",
         },
         {
             "check": sim_cost["time_min"] <= real_cost["time_min"],
-            "message": "Time estimate minimum exceeds truth",
+            "message": f"Time estimate minimum {sim_cost['time_min']} exceeds truth {real_cost['time_min']}",
         },
         {
             "check": real_cost["time_max"] <= sim_cost["time_max"],
-            "message": "Time estimate maximum is less than truth",
+            "message": f"Time estimate maximum {sim_cost['time_max']} is less than truth {real_cost['time_max']}",
         },
         {
             "check": sim_cost["cost_min"] <= real_cost["cost_min"],
-            "message": "Cost estimate minimum exceeds truth",
+            "message": f"Cost estimate minimum {sim_cost['cost_min']} exceeds truth {real_cost['cost_min']}",
         },
         {
             "check": real_cost["cost_max"] <= sim_cost["cost_max"],
-            "message": "Cost estimate maximum is less than truth",
+            "message": f"Cost estimate maximum {sim_cost['cost_max']} is less than truth {real_cost['cost_max']}",
         },
     ]
     failures = [assertion for assertion in assertions if not assertion["check"]]
