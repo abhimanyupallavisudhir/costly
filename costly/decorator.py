@@ -26,16 +26,16 @@ def costly(
             simulate = kwargs.pop("simulate", False)
             description = kwargs.pop("description", None)
 
-            # Apply parameter mappings
-            mapped_kwargs = kwargs | {
+            costly_kwargs = kwargs | {
                 key: mapping(kwargs) if callable(mapping) else kwargs.get(mapping)
                 for key, mapping in param_mappings.items()
             }
 
             if simulate:
-                simulator_params = signature(simulator).parameters
                 simulator_kwargs = {
-                    k: v for k, v in mapped_kwargs.items() if k in simulator_params
+                    k: v
+                    for k, v in costly_kwargs.items()
+                    if k in signature(simulator).parameters
                 } | {"cost_log": cost_log, "description": description}
                 return simulator(**simulator_kwargs)
 
@@ -45,12 +45,11 @@ def costly(
                     cost_info = {}
                     if isinstance(output, CostlyResponse):
                         output, cost_info = output.output, output.cost_info
-                    estimator_params = signature(estimator).parameters
                     estimator_kwargs = (
                         {
                             k: v
-                            for k, v in mapped_kwargs.items()
-                            if k in estimator_params
+                            for k, v in costly_kwargs.items()
+                            if k in signature(estimator).parameters
                         }
                         | {
                             "output_string": output,
