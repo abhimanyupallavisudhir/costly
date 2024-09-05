@@ -102,7 +102,9 @@ class LLM_Simulator_Faker:
 
     @staticmethod
     def simulate_llm_call(
-        input_string: str,
+        input_string: str = None,  # must supply at least one of input_string, input_tokens, messages
+        input_tokens: int = None,
+        messages: list[dict[str, str]] = None,
         model: str = None,
         response_model: type = str,
         cost_log: Costlog = None,
@@ -118,7 +120,9 @@ class LLM_Simulator_Faker:
             with cost_log.new_item() as (item, _):
                 cost_item = LLM_API_Estimation.get_cost_simulating(
                     input_string=input_string,
+                    input_tokens=input_tokens,
                     model=model,
+                    messages=messages,
                     description=description,
                     # output_string=response, # not needed
                 )

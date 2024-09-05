@@ -6,13 +6,14 @@ import json
 import warnings
 from unittest.mock import patch
 
+
 class LLM_API_Estimation:
     """Library of functions for creating cost items from LLM API calls.
     You may subclass this and override any of the attributes or methods.
-      
+
     Attributes:
     - PRICES: dictionary of prices for each model
-    
+
     Methods to produce cost items:
     - get_cost_simulating(...) -> dict[str, float]
     - get_cost_real(...) -> dict[str, float]
@@ -24,9 +25,9 @@ class LLM_API_Estimation:
     - output_tokens_estimate(input_tokens, model) -> output_tokens_min, output_tokens_max
       (estimate output tokens for simulating)
 
-    Methods to help convert to input_string:
-    - messages_to_input_string(messages: list[dict[str, str]]) -> str
-    - get_raw_prompt_instructor(messages: str | list[dict[str, str]], client:Instructor, response_model:BaseModel) -> str
+    Methods to help convert things to input_tokens or input_string:
+    - messages_to_input_tokens(messages: list[dict[str, str]]) -> int
+    - get_raw_input_string_instructor(messages: str | list[dict[str, str]], client:Instructor, response_model:BaseModel) -> str
 
     Private methods:
     - _get_cost_simulating_from_input_tokens_output_tokens(...) -> dict[str, float]
@@ -42,14 +43,14 @@ class LLM_API_Estimation:
       tokenize=_tokenize_rough
     - output_tokens_estimate: to change the way you estimate output tokens for simulating
     - get_model: e.g. if you want to just match models literally --
-      get_model=lambda model, supported_models: model 
-    - get_raw_prompt_instructor: e.g. if instructor adds a better way to see the raw prompt
+      get_model=lambda model, supported_models: model
+    - get_raw_input_string_instructor: e.g. if instructor adds a better way to see the raw prompt
     - _process_raw_prompt: e.g. if instructor adds a better way to see the raw prompt
     - _get_cost_simulating_from_input_tokens_output_tokens,
-      _get_cost_real_from_input_tokens_output_tokens_timer, 
-      get_cost_simulating, 
+      _get_cost_real_from_input_tokens_output_tokens_timer,
+      get_cost_simulating,
       get_cost_real
-      if you're going to change these (e.g. to use this library for some purpose other than 
+      if you're going to change these (e.g. to use this library for some purpose other than
       LLM API calls), maybe just define a new class
     """
 
@@ -132,12 +133,12 @@ class LLM_API_Estimation:
             "text-embedding-3-large",
         ]
         try:
-            encoding = tiktoken.encoding_for_model(LLM_API_Estimation.get_model(model, supported_models))
+            encoding = tiktoken.encoding_for_model(
+                LLM_API_Estimation.get_model(model, supported_models)
+            )
         except:
             encoding = tiktoken.get_encoding("cl100k_base")
-        return len(encoding.encode(input_string)) + 7 
-    # HACK: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
-        
+        return len(encoding.encode(input_string))
 
     @staticmethod
     def _tokenize_rough(input_string: str, model: str = None) -> int:
@@ -146,27 +147,101 @@ class LLM_API_Estimation:
 
     @staticmethod
     def output_tokens_estimate(
-        input_string: str = None, input_tokens: int = None, model: str = None
+        input_string: str = None, messages: list[dict[str, str]] = None, input_tokens: int = None, model: str = None
     ) -> tuple[int, int]:
         return [0, 2048]
 
     @staticmethod
-    def messages_to_input_string(messages: list[dict[str, str]]) -> str:
-        return "".join([m["content"] for m in messages])
-    
+    def messages_to_input_tokens(
+        messages: list[dict[str, str]], model: str = None
+    ) -> int:
+        """Return the number of tokens used by a list of messages.
+
+        From: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
+        """
+        try:
+            encoding = tiktoken.encoding_for_model(model)
+        except KeyError:
+            warnings.warn(
+                "messages_to_input_tokens: model not found. Using cl100k_base encoding."
+            )
+            encoding = tiktoken.get_encoding("cl100k_base")
+        if model in {
+            "gpt-3.5-turbo-0613",
+            "gpt-3.5-turbo-16k-0613",
+            "gpt-4-0314",
+            "gpt-4-32k-0314",
+            "gpt-4-0613",
+            "gpt-4-32k-0613",
+        }:
+            tokens_per_message = 3
+            tokens_per_name = 1
+        elif model == "gpt-3.5-turbo-0301":
+            tokens_per_message = (
+                4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
+            )
+            tokens_per_name = -1  # if there's a name, the role is omitted
+        elif "gpt-3.5-turbo" in model:
+            warnings.warn(
+                "messages_to_input_tokens: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0613."
+            )
+            return LLM_API_Estimation.messages_to_input_tokens(
+                messages, model="gpt-3.5-turbo-0613"
+            )
+        elif "gpt-4" in model:
+            warnings.warn(
+                "messages_to_input_tokens: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613."
+            )
+            return LLM_API_Estimation.messages_to_input_tokens(
+                messages, model="gpt-4-0613"
+            )
+        else:
+            warnings.warn(
+                f"messages_to_input_tokens: model {model} not found. Returning num tokens assuming gpt-4-0613."
+            )
+            return LLM_API_Estimation.messages_to_input_tokens(
+                messages, model="gpt-4-0613"
+            )
+        num_tokens = 0
+        for message in messages:
+            num_tokens += tokens_per_message
+            for key, value in message.items():
+                num_tokens += len(encoding.encode(value))
+                if key == "name":
+                    num_tokens += tokens_per_name
+        num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
+        return num_tokens
+
     @staticmethod
-    def _input_string_to_messages(input_string: str) -> list[dict[str, str]]:
-        return [{"content": input_string, "role": "user"}]
-    
+    def prompt_to_messages(
+        prompt: str,
+        system_prompt: str = None,
+    ) -> list[dict[str, str]]:
+        messages = []
+        if system_prompt is not None:
+            messages.append({"content": system_prompt, "role": "system"})
+        messages.append({"content": prompt, "role": "user"})
+        return messages
+
     @staticmethod
-    def get_raw_prompt_instructor(
+    def prompt_to_input_tokens(
+        prompt: str,
+        system_prompt: str = None,
+        model: str = None,
+    ) -> int:
+        return LLM_API_Estimation.messages_to_input_tokens(
+            LLM_API_Estimation.prompt_to_messages(prompt, system_prompt), model
+        )
+
+    @staticmethod
+    def get_raw_input_string_instructor(
         messages: str | list[dict[str, str]],
-        client, #: "Instructor",
+        client,  #: "Instructor",
         model: str,
         response_model: BaseModel,
     ):
         if isinstance(messages, str):
-            messages = LLM_API_Estimation._input_string_to_messages(messages)
+            messages = [{"content": messages, "role": "user"}]
         log_stream = StringIO()
         logger = logging.getLogger("instructor")
         logger.setLevel(logging.DEBUG)
@@ -316,7 +391,7 @@ class LLM_API_Estimation:
             "simulated": True,
             **kwargs,
         }
-        
+
     @staticmethod
     def _get_tokens(
         model: str,
@@ -324,14 +399,20 @@ class LLM_API_Estimation:
         output_tokens_min: int = None,
         output_tokens_max: int = None,
         input_string: str = None,
+        messages: list[dict[str, str]] = None,
         output_string: str = None,
     ) -> tuple[int, int, int]:
         if input_tokens is None:
             try:
-                assert input_string is not None
-                input_tokens = LLM_API_Estimation.tokenize(input_string, model)
+                assert input_string is not None or messages is not None
+                if input_string is not None:
+                    input_tokens = LLM_API_Estimation.tokenize(input_string, model)
+                else:
+                    input_tokens = LLM_API_Estimation.messages_to_input_tokens(
+                        messages, model
+                    )
             except:
-                raise ValueError(f"Failed to tokenize input_string {input_string}")
+                raise ValueError(f"Failed to tokenize input_string {input_string} or messages {messages}")
         if output_tokens_min is None or output_tokens_max is None:
             try:
                 assert output_string is not None
@@ -339,8 +420,13 @@ class LLM_API_Estimation:
                 output_tokens_min, output_tokens_max = output_tokens, output_tokens
             except:
                 try:
-                    output_tokens_min, output_tokens_max = LLM_API_Estimation.output_tokens_estimate(
-                        input_string=input_string, input_tokens=input_tokens, model=model
+                    output_tokens_min, output_tokens_max = (
+                        LLM_API_Estimation.output_tokens_estimate(
+                            input_string=input_string,
+                            messages=messages,
+                            input_tokens=input_tokens,
+                            model=model,
+                        )
                     )
                 except:
                     raise ValueError(
@@ -356,16 +442,20 @@ class LLM_API_Estimation:
         output_tokens_min: int = None,
         output_tokens_max: int = None,
         input_string: str = None,
+        messages: list[dict[str, str]] = None,
         output_string: str = None,
         **kwargs,
     ) -> dict[str, float]:
-        input_tokens, output_tokens_min, output_tokens_max = LLM_API_Estimation._get_tokens(
-            model=model,
-            input_tokens=input_tokens,
-            output_tokens_min=output_tokens_min,
-            output_tokens_max=output_tokens_max,
-            input_string=input_string,
-            output_string=output_string,
+        input_tokens, output_tokens_min, output_tokens_max = (
+            LLM_API_Estimation._get_tokens(
+                model=model,
+                input_tokens=input_tokens,
+                output_tokens_min=output_tokens_min,
+                output_tokens_max=output_tokens_max,
+                input_string=input_string,
+                messages=messages,
+                output_string=output_string,
+            )
         )
         return LLM_API_Estimation._get_cost_simulating_from_input_tokens_output_tokens(
             input_tokens=input_tokens,
@@ -373,6 +463,7 @@ class LLM_API_Estimation:
             output_tokens_max=output_tokens_max,
             model=model,
             input_string=input_string,
+            messages=messages,
             output_string=output_string,
             **kwargs,
         )
@@ -406,6 +497,7 @@ class LLM_API_Estimation:
         input_tokens: int = None,
         output_tokens: int = None,
         input_string: str = None,
+        messages: list[dict[str, str]] = None,
         output_string: str = None,
         timer: float = None,
         **kwargs,
@@ -417,15 +509,17 @@ class LLM_API_Estimation:
             output_tokens_min=output_tokens,
             output_tokens_max=output_tokens,
             input_string=input_string,
+            messages=messages,
             output_string=output_string,
         )
-        
+
         return LLM_API_Estimation._get_cost_real_from_input_tokens_output_tokens_timer(
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             timer=timer,
             model=model,
             input_string=input_string,
+            messages=messages,
             output_string=output_string,
             **kwargs,
         )

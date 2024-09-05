@@ -78,8 +78,8 @@ def chatgpt3(prompt: str, model_name: str) -> str:
     )
 
 @costly(
-    input_string=lambda kwargs: LLM_API_Estimation.messages_to_input_string(
-        kwargs["messages"]
+    input_tokens=lambda kwargs: LLM_API_Estimation.messages_to_input_tokens(
+        kwargs["messages"], kwargs["model"]
     ),
 )
 def chatgpt_messages(messages: list[dict[str, str]], model: str) -> str:
@@ -97,7 +97,7 @@ def chatgpt_messages(messages: list[dict[str, str]], model: str) -> str:
 
 
 @costly(
-    input_string=lambda kwargs: LLM_API_Estimation.get_raw_prompt_instructor(**kwargs),
+    input_string=lambda kwargs: LLM_API_Estimation.get_raw_input_string_instructor(**kwargs),
 )
 def chatgpt_instructor(
     messages: str | list[dict[str, str]],

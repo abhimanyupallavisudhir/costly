@@ -111,9 +111,7 @@ def test_estimate_contains_exact(params):
 @pytest.mark.slow
 @pytest.mark.parametrize("params", PARAMSS)
 def test_estimate_contains_exact_messages(params):
-    params["messages"] = LLM_API_Estimation._input_string_to_messages(
-        params.pop("input_string")
-    )
+    params["messages"] = [{"content": params.pop("input_string"), "role": "user"}]
     costlog = Costlog()
     real = chatgpt_messages(
         **params,
@@ -129,9 +127,7 @@ def test_estimate_contains_exact_messages(params):
 # @pytest.mark.slow
 @pytest.mark.parametrize("params", PARAMSS_INSTRUCTOR)
 def test_estimate_contains_exact_instructor(params):
-    params["messages"] = LLM_API_Estimation._input_string_to_messages(
-        params.pop("input_string")
-    )
+    params["messages"] = [{"content": params.pop("input_string"), "role": "user"}]
     costlog = Costlog()
     real = chatgpt_instructor(
         **params,
