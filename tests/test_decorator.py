@@ -9,7 +9,7 @@ from tests.example_functions import (
     chatgpt,
     chatgpt2,
     chatgpt3,
-    chatgpt_messages,
+    chatgpt_prompt,
     chatgpt_instructor,
     CLIENT,
     PERSONINFO,
@@ -84,14 +84,14 @@ def test_chatgpt3():
 
 def test_chatgpt_messages():
     costlog = Costlog()
-    x = chatgpt_messages(
+    x = chatgpt_prompt(
         messages=[{"role": "user", "content": "Write the Lorem ipsum text"}],
         model="gpt-4o-mini",
         cost_log=costlog,
         simulate=False,
         description=["chatgpt call"],
     )
-    y = chatgpt_messages(
+    y = chatgpt_prompt(
         messages=[{"role": "user", "content": "Write the Lorem ipsum text"}],
         model="gpt-4o-mini",
         cost_log=costlog,

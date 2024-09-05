@@ -27,6 +27,7 @@ class LLM_API_Estimation:
 
     Methods to help convert things to input_tokens or input_string:
     - messages_to_input_tokens(messages: list[dict[str, str]]) -> int
+    - prompt_to_input_tokens(prompt: str, system_prompt: str = None, model: str = None) -> int
     - get_raw_input_string_instructor(messages: str | list[dict[str, str]], client:Instructor, response_model:BaseModel) -> str
 
     Private methods:
@@ -239,6 +240,7 @@ class LLM_API_Estimation:
         client,  #: "Instructor",
         model: str,
         response_model: BaseModel,
+        **kwargs, # just let people pass in whatever they want
     ):
         if isinstance(messages, str):
             messages = [{"content": messages, "role": "user"}]

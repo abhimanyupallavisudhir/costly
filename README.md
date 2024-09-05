@@ -70,7 +70,7 @@ def chatgpt(input_string: str, model: str) -> str:
 ## Testing
 
 ```bash
-poetry run pytest -s
+poetry run pytest -s -m "slow"
 ```
 
 ## TODO
@@ -78,4 +78,4 @@ poetry run pytest -s
 - [ ] Make it work with async
 - [ ] Support for locally run LLMs -- ideally need a cost & time estimator that takes into account your machine details, GPU pricing etc.
 - [ ] Decide and document what the best way to "propagate" `description` (for breakdown purposes) through function calls is. Have the user manually write `def f(...): ... g(description = kwargs.get("description") + ["f"]`? Add a `@description("blabla")` decorator? Add a `@description` decorator that automatically appends the function name and arguments into `description`?
-- [ ] Better solution for token counting for Chat messages (search `HACK` in the repo)
+- [x] Better solution for token counting for Chat messages (search `HACK` in the repo)

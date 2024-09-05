@@ -24,12 +24,12 @@ class BARMODEL(BaseModel):
 CLIENT = instructor.from_openai(OpenAI())
 
 @costly()
-def chatgpt(input_string: str, model: str) -> str:
+def chatgpt(messages: list[dict[str, str]], model: str) -> str:
     from openai import OpenAI
 
     client = OpenAI()
     response = client.chat.completions.create(
-        model=model, messages=[{"role": "user", "content": input_string}]
+        model=model, messages=messages
     )
     return CostlyResponse(
         output=response.choices[0].message.content,
@@ -42,15 +42,15 @@ def chatgpt(input_string: str, model: str) -> str:
 
 
 @costly(
-    input_string=(lambda kwargs: kwargs["prompt"]),
+    messages=(lambda kwargs: kwargs["history"]),
     model=(lambda kwargs: kwargs["model_name"]),
 )
-def chatgpt2(prompt: str, model_name: str) -> str:
+def chatgpt2(history: list[dict[str, str]], model_name: str) -> str:
     from openai import OpenAI
 
     client = OpenAI()
     response = client.chat.completions.create(
-        model=model_name, messages=[{"role": "user", "content": prompt}]
+        model=model_name, messages=history
     )
     return CostlyResponse(
         output=response.choices[0].message.content,
@@ -61,13 +61,13 @@ def chatgpt2(prompt: str, model_name: str) -> str:
     )
 
 
-@costly(input_string="prompt", model="model_name")
-def chatgpt3(prompt: str, model_name: str) -> str:
+@costly(messages="message_history", model="model_name")
+def chatgpt3(message_history: list[dict[str, str]], model_name: str) -> str:
     from openai import OpenAI
 
     client = OpenAI()
     response = client.chat.completions.create(
-        model=model_name, messages=[{"role": "user", "content": prompt}]
+        model=model_name, messages=message_history
     )
     return CostlyResponse(
         output=response.choices[0].message.content,
@@ -78,35 +78,35 @@ def chatgpt3(prompt: str, model_name: str) -> str:
     )
 
 @costly(
-    input_tokens=lambda kwargs: LLM_API_Estimation.messages_to_input_tokens(
-        kwargs["messages"], kwargs["model"]
-    ),
+    input_tokens=lambda kwargs: LLM_API_Estimation.prompt_to_input_tokens(**kwargs),
 )
-def chatgpt_messages(messages: list[dict[str, str]], model: str) -> str:
+def chatgpt_prompt(
+    prompt: str, model: str, system_prompt: str = "You are a helpful assistant."
+) -> str:
     from openai import OpenAI
 
     client = OpenAI()
-    response = client.chat.completions.create(model=model, messages=messages)
-    return CostlyResponse(
-        output=response.choices[0].message.content,
-        cost_info={
-            "input_tokens": response.usage.prompt_tokens,
-            "output_tokens": response.usage.completion_tokens,
-        },
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"content": prompt, "role": "user"},
+            {"content": system_prompt, "role": "system"},
+        ],
     )
+    output_string = response.choices[0].message.content
+    return output_string
+
 
 
 @costly(
     input_string=lambda kwargs: LLM_API_Estimation.get_raw_input_string_instructor(**kwargs),
 )
 def chatgpt_instructor(
-    messages: str | list[dict[str, str]],
+    messages: list[dict[str, str]],
     model: str,
     client: Instructor,
     response_model: BaseModel,
 ) -> str:
-    if isinstance(messages, str):
-        messages = [{"role": "user", "content": messages}]
     response = client.chat.completions.create_with_completion(
         model=model,
         messages=messages,

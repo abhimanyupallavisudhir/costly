@@ -10,7 +10,7 @@ from costly.costlog import Costlog
 from costly.estimators.llm_api_estimation import LLM_API_Estimation
 from tests.example_functions import (
     chatgpt,
-    chatgpt_messages,
+    chatgpt_prompt,
     chatgpt_instructor,
     CLIENT,
     PERSONINFO,
@@ -23,25 +23,29 @@ PROMPTS = [
     "Write a short story.",
     "Write the bubblesort algorithm in Python.",
 ]
+MESSAGESS = [
+    [{"content": prompt, "role": "user"}] for prompt in PROMPTS
+]
 MODELS = LLM_API_Estimation.PRICES.keys() # TODO implement tests for non-OpenAI models
 MODELS_OPENAI = [model for model in MODELS if model.startswith("gpt")]
 PARAMSS = [
-    {"input_string": prompt, "model": model} for model in MODELS_OPENAI for prompt in PROMPTS
+    {"messages": messages, "model": model} for model in MODELS_OPENAI for messages in MESSAGESS
 ]
-
+PARAMSS_PROMPT = [
+    {"prompt": prompt, "model": model} for model in MODELS_OPENAI for prompt in PROMPTS
+]
+PROMPTS_INSTRUCTOR = [
+    "Give me an example of a PERSONINFO object.",
+    "Give me an example of a FOOMODEL object.",
+    "Give me an example of a BARMODEL object.",
+]
+MESSAGESS_INSTRUCTOR = [
+    [{"content": prompt, "role": "user"}] for prompt in PROMPTS_INSTRUCTOR
+]
 PARAMSS_INSTRUCTOR_ = [
-    {
-        "input_string": "Give me an example of a PERSONINFO object.",
-        "response_model": PERSONINFO,
-    },
-    {
-        "input_string": "Give me an example of a FOOMODEL object.",
-        "response_model": FOOMODEL,
-    },
-    {
-        "input_string": "Give me an example of a BARMODEL object.",
-        "response_model": BARMODEL,
-    },
+    {"messages": MESSAGESS_INSTRUCTOR[0], "response_model": PERSONINFO},
+    {"messages": MESSAGESS_INSTRUCTOR[1], "response_model": FOOMODEL},
+    {"messages": MESSAGESS_INSTRUCTOR[2], "response_model": BARMODEL},
 ]
 PARAMSS_INSTRUCTOR = [
     {**params, "model": model, "client": instructor.from_openai(OpenAI())}
@@ -109,25 +113,23 @@ def test_estimate_contains_exact(params):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("params", PARAMSS)
-def test_estimate_contains_exact_messages(params):
-    params["messages"] = [{"content": params.pop("input_string"), "role": "user"}]
+@pytest.mark.parametrize("params", PARAMSS_PROMPT)
+def test_estimate_contains_exact_prompt(params):
     costlog = Costlog()
-    real = chatgpt_messages(
+    real = chatgpt_prompt(
         **params,
         simulate=False,
         cost_log=costlog,
     )
-    sim = chatgpt_messages(**params, simulate=True, cost_log=costlog)
+    sim = chatgpt_prompt(**params, simulate=True, cost_log=costlog)
     real_cost = costlog.items[0]
     sim_cost = costlog.items[1]
     check_cost_estimates(real_cost, sim_cost)
 
 
-# @pytest.mark.slow
+@pytest.mark.slow
 @pytest.mark.parametrize("params", PARAMSS_INSTRUCTOR)
 def test_estimate_contains_exact_instructor(params):
-    params["messages"] = [{"content": params.pop("input_string"), "role": "user"}]
     costlog = Costlog()
     real = chatgpt_instructor(
         **params,
