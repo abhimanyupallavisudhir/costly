@@ -61,13 +61,13 @@ def chatgpt2(history: list[dict[str, str]], model_name: str) -> str:
     )
 
 
-@costly(messages="message_history", model="model_name")
-def chatgpt3(message_history: list[dict[str, str]], model_name: str) -> str:
+@costly(messages="history", model="model_name")
+def chatgpt3(history: list[dict[str, str]], model_name: str) -> str:
     from openai import OpenAI
 
     client = OpenAI()
     response = client.chat.completions.create(
-        model=model_name, messages=message_history
+        model=model_name, messages=history
     )
     return CostlyResponse(
         output=response.choices[0].message.content,

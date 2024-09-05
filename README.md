@@ -70,7 +70,10 @@ def chatgpt(input_string: str, model: str) -> str:
 ## Testing
 
 ```bash
+poetry run pytest -s -m "not slow"
 poetry run pytest -s -m "slow"
+
+Tests for instructor currently fail.
 ```
 
 ## TODO
@@ -79,3 +82,23 @@ poetry run pytest -s -m "slow"
 - [ ] Support for locally run LLMs -- ideally need a cost & time estimator that takes into account your machine details, GPU pricing etc.
 - [ ] Decide and document what the best way to "propagate" `description` (for breakdown purposes) through function calls is. Have the user manually write `def f(...): ... g(description = kwargs.get("description") + ["f"]`? Add a `@description("blabla")` decorator? Add a `@description` decorator that automatically appends the function name and arguments into `description`?
 - [x] Better solution for token counting for Chat messages (search `HACK` in the repo)
+- [ ] make instructor tests pass
+
+```
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact[gpt-4-turbo-messages0] - AssertionError: ['Time estimate maximum 73.728 is less than truth 74.1186316999956']
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact_instructor[PERSONINFO_gpt-4o] - AssertionError: ['Input tokens estimate 43 not within 20pc of truth 83']
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact_instructor[PERSONINFO_gpt-4o-mini] - AssertionError: ['Input tokens estimate 43 not within 20pc of truth 83']
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact_instructor[PERSONINFO_gpt-4-turbo] - AssertionError: ['Input tokens estimate 43 not within 20pc of truth 85']
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact_instructor[PERSONINFO_gpt-4] - AssertionError: ['Input tokens estimate 43 not within 20pc of truth 76']
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact_instructor[PERSONINFO_gpt-3.5-turbo] - AssertionError: ['Input tokens estimate 43 not within 20pc of truth 85']
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact_instructor[FOOMODEL_gpt-4o] - AssertionError: ['Input tokens estimate 229 not within 20pc of truth 108', 'Cost estimate minimum 0.0011450000000000002 exceeds truth 0.000795']
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact_instructor[FOOMODEL_gpt-4o-mini] - AssertionError: ['Input tokens estimate 230 not within 20pc of truth 108', 'Cost estimate minimum 3.45e-05 exceeds truth 2.8800000000000002e-05']
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact_instructor[FOOMODEL_gpt-4-turbo] - AssertionError: ['Input tokens estimate 231 not within 20pc of truth 113', 'Cost estimate minimum 0.00231 exceeds truth 0.0016400000000000002']
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact_instructor[FOOMODEL_gpt-4] - AssertionError: ['Input tokens estimate 228 not within 20pc of truth 92', 'Cost estimate minimum 0.006840000000000001 exceeds truth 0.00426']
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact_instructor[FOOMODEL_gpt-3.5-turbo] - AssertionError: ['Input tokens estimate 233 not within 20pc of truth 113', 'Cost estimate minimum 0.0001165 exceeds truth 8.05e-05']
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact_instructor[BARMODEL_gpt-4o] - AssertionError: ['Input tokens estimate 321 not within 20pc of truth 168']
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact_instructor[BARMODEL_gpt-4o-mini] - AssertionError: ['Input tokens estimate 322 not within 20pc of truth 168']
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact_instructor[BARMODEL_gpt-4-turbo] - AssertionError: ['Input tokens estimate 323 not within 20pc of truth 178']
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact_instructor[BARMODEL_gpt-4] - AssertionError: ['Input tokens estimate 320 not within 20pc of truth 126']
+FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact_instructor[BARMODEL_gpt-3.5-turbo] - AssertionError: ['Input tokens estimate 325 not within 20pc of truth 178']
+```

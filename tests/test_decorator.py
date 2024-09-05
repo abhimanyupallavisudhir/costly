@@ -19,14 +19,14 @@ from tests.example_functions import (
 def test_chatgpt():
     costlog = Costlog()
     x = chatgpt(
-        input_string="Write the Lorem ipsum text",
+        messages=[{"role": "user", "content": "Write the Lorem ipsum text"}],
         model="gpt-4o-mini",
         cost_log=costlog,
         simulate=False,
         description=["chatgpt call"],
     )
     y = chatgpt(
-        input_string="Write the Lorem ipsum text",
+        messages=[{"role": "user", "content": "Write the Lorem ipsum text"}],
         model="gpt-4o-mini",
         cost_log=costlog,
         simulate=True,
@@ -41,14 +41,14 @@ def test_chatgpt():
 def test_chatgpt2():
     costlog = Costlog()
     x = chatgpt2(
-        prompt="Write the Lorem ipsum text",
+        history=[{"role": "user", "content": "Write the Lorem ipsum text"}],
         model_name="gpt-4o-mini",
         cost_log=costlog,
         simulate=False,
         description=["chatgpt call"],
     )
     y = chatgpt2(
-        prompt="Write the Lorem ipsum text",
+        history=[{"role": "user", "content": "Write the Lorem ipsum text"}],
         model_name="gpt-4o-mini",
         cost_log=costlog,
         simulate=True,
@@ -63,14 +63,14 @@ def test_chatgpt2():
 def test_chatgpt3():
     costlog = Costlog()
     x = chatgpt3(
-        prompt="Write the Lorem ipsum text",
+        history=[{"role": "user", "content": "Write the Lorem ipsum text"}],
         model_name="gpt-4o-mini",
         cost_log=costlog,
         simulate=False,
         description=["chatgpt call"],
     )
     y = chatgpt3(
-        prompt="Write the Lorem ipsum text",
+        history=[{"role": "user", "content": "Write the Lorem ipsum text"}],
         model_name="gpt-4o-mini",
         cost_log=costlog,
         simulate=True,
@@ -82,17 +82,17 @@ def test_chatgpt3():
     assert costlog.totals["calls"] == 2
 
 
-def test_chatgpt_messages():
+def test_chatgpt_prompt():
     costlog = Costlog()
     x = chatgpt_prompt(
-        messages=[{"role": "user", "content": "Write the Lorem ipsum text"}],
+        prompt="Write the Lorem ipsum text",
         model="gpt-4o-mini",
         cost_log=costlog,
         simulate=False,
         description=["chatgpt call"],
     )
     y = chatgpt_prompt(
-        messages=[{"role": "user", "content": "Write the Lorem ipsum text"}],
+        prompt="Write the Lorem ipsum text",
         model="gpt-4o-mini",
         cost_log=costlog,
         simulate=True,
@@ -107,7 +107,7 @@ def test_chatgpt_messages():
 def test_chatgpt_instructor():
     costlog = Costlog()
     x = chatgpt_instructor(
-        messages="Write the Lorem ipsum text",
+        messages=[{"role": "user", "content": "Write the Lorem ipsum text"}],
         model="gpt-4o-mini",
         client=CLIENT,
         response_model=PERSONINFO,
@@ -116,7 +116,7 @@ def test_chatgpt_instructor():
         description=["chatgpt call"],
     )
     y = chatgpt_instructor(
-        messages="Write the Lorem ipsum text",
+        messages=[{"role": "user", "content": "Write the Lorem ipsum text"}],
         model="gpt-4o-mini",
         client=CLIENT,
         response_model=PERSONINFO,

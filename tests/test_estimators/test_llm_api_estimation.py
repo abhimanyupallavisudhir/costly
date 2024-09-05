@@ -42,16 +42,16 @@ PROMPTS_INSTRUCTOR = [
 MESSAGESS_INSTRUCTOR = [
     [{"content": prompt, "role": "user"}] for prompt in PROMPTS_INSTRUCTOR
 ]
-PARAMSS_INSTRUCTOR_ = [
-    {"messages": MESSAGESS_INSTRUCTOR[0], "response_model": PERSONINFO},
-    {"messages": MESSAGESS_INSTRUCTOR[1], "response_model": FOOMODEL},
-    {"messages": MESSAGESS_INSTRUCTOR[2], "response_model": BARMODEL},
-]
-PARAMSS_INSTRUCTOR = [
-    {**params, "model": model, "client": instructor.from_openai(OpenAI())}
-    for params in PARAMSS_INSTRUCTOR_
+PARAMSS_INSTRUCTOR_ = {
+    "PERSONINFO": {"messages": MESSAGESS_INSTRUCTOR[0], "response_model": PERSONINFO},
+    "FOOMODEL": {"messages": MESSAGESS_INSTRUCTOR[1], "response_model": FOOMODEL},
+    "BARMODEL": {"messages": MESSAGESS_INSTRUCTOR[2], "response_model": BARMODEL},
+}
+PARAMSS_INSTRUCTOR = {
+    k + "_" + model: {**v, "model": model, "client": instructor.from_openai(OpenAI())}
+    for k, v in PARAMSS_INSTRUCTOR_.items()
     for model in MODELS_OPENAI
-]
+}
 
 
 def check_cost_estimates(real_cost, sim_cost):
@@ -94,16 +94,19 @@ def check_cost_estimates(real_cost, sim_cost):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("params", PARAMSS)
-def test_estimate_contains_exact(params):
+@pytest.mark.parametrize("messages", MESSAGESS)
+@pytest.mark.parametrize("model", MODELS_OPENAI)
+def test_estimate_contains_exact(messages, model):
     costlog = Costlog()
     real = chatgpt(
-        **params,
+        messages=messages,
+        model=model,
         simulate=False,
         cost_log=costlog,
     )
     sim = chatgpt(
-        **params,
+        messages=messages,
+        model=model,
         simulate=True,
         cost_log=costlog,
     )
@@ -113,31 +116,38 @@ def test_estimate_contains_exact(params):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("params", PARAMSS_PROMPT)
-def test_estimate_contains_exact_prompt(params):
+@pytest.mark.parametrize("prompt", PROMPTS)
+@pytest.mark.parametrize("model", MODELS_OPENAI)
+def test_estimate_contains_exact_prompt(prompt, model):
     costlog = Costlog()
     real = chatgpt_prompt(
-        **params,
+        prompt=prompt,
+        model=model,
         simulate=False,
         cost_log=costlog,
     )
-    sim = chatgpt_prompt(**params, simulate=True, cost_log=costlog)
+    sim = chatgpt_prompt(
+        prompt=prompt,
+        model=model,
+        simulate=True,
+        cost_log=costlog,
+    )
     real_cost = costlog.items[0]
     sim_cost = costlog.items[1]
     check_cost_estimates(real_cost, sim_cost)
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("params", PARAMSS_INSTRUCTOR)
+@pytest.mark.parametrize("params", PARAMSS_INSTRUCTOR.keys())
 def test_estimate_contains_exact_instructor(params):
     costlog = Costlog()
     real = chatgpt_instructor(
-        **params,
+        **PARAMSS_INSTRUCTOR[params],
         simulate=False,
         cost_log=costlog,
     )
     sim = chatgpt_instructor(
-        **params,
+        **PARAMSS_INSTRUCTOR[params],
         simulate=True,
         cost_log=costlog,
     )
