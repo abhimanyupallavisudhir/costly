@@ -5,7 +5,7 @@ from typing import Callable, Any
 from costly.costlog import Costlog
 from costly.simulators.llm_simulator_faker import LLM_Simulator_Faker
 from costly.estimators.llm_api_estimation import LLM_API_Estimation
-from inspect import signature
+from inspect import signature, Parameter
 
 
 @dataclass
@@ -25,9 +25,22 @@ def costly(
             cost_log = kwargs.pop("cost_log", None)
             simulate = kwargs.pop("simulate", False)
             description = kwargs.pop("description", None)
+            
+            # Get the function's signature
+            sig = signature(func)
+            
+            # Create a dictionary with default values
+            options = {
+                k: v.default for k, v in sig.parameters.items()
+                if v.default is not Parameter.empty
+            }
 
-            costly_kwargs = kwargs | {
-                key: mapping(kwargs) if callable(mapping) else kwargs.get(mapping)
+            # Update default kwargs with provided kwargs
+            options.update(kwargs)
+
+            # apply param_mappings
+            costly_kwargs = options | {
+                key: mapping(options) if callable(mapping) else options.get(mapping)
                 for key, mapping in param_mappings.items()
             }
 
@@ -41,7 +54,7 @@ def costly(
 
             if cost_log is not None:
                 with cost_log.new_item() as (item, timer):
-                    output = func(*args, **kwargs)
+                    output = func(*args, **kwargs) # call function proper
                     cost_info = {}
                     if isinstance(output, CostlyResponse):
                         output, cost_info = output.output, output.cost_info
