@@ -6,9 +6,11 @@ from costly.estimators.llm_api_estimation import LLM_API_Estimation
 from openai import OpenAI
 from instructor import Instructor
 
+
 class PERSONINFO(BaseModel):
     name: str
     age: int
+
 
 class FOOMODEL(BaseModel):
     name: str
@@ -21,16 +23,16 @@ class BARMODEL(BaseModel):
     foo: FOOMODEL
     fookids: list[FOOMODEL]
 
+
 CLIENT = instructor.from_openai(OpenAI())
+
 
 @costly()
 def chatgpt(messages: list[dict[str, str]], model: str) -> str:
     from openai import OpenAI
 
     client = OpenAI()
-    response = client.chat.completions.create(
-        model=model, messages=messages
-    )
+    response = client.chat.completions.create(model=model, messages=messages)
     return CostlyResponse(
         output=response.choices[0].message.content,
         cost_info={
@@ -38,7 +40,6 @@ def chatgpt(messages: list[dict[str, str]], model: str) -> str:
             "output_tokens": response.usage.completion_tokens,
         },
     )
-
 
 
 @costly(
@@ -49,9 +50,7 @@ def chatgpt2(history: list[dict[str, str]], model_name: str) -> str:
     from openai import OpenAI
 
     client = OpenAI()
-    response = client.chat.completions.create(
-        model=model_name, messages=history
-    )
+    response = client.chat.completions.create(model=model_name, messages=history)
     return CostlyResponse(
         output=response.choices[0].message.content,
         cost_info={
@@ -66,9 +65,7 @@ def chatgpt3(history: list[dict[str, str]], model_name: str) -> str:
     from openai import OpenAI
 
     client = OpenAI()
-    response = client.chat.completions.create(
-        model=model_name, messages=history
-    )
+    response = client.chat.completions.create(model=model_name, messages=history)
     return CostlyResponse(
         output=response.choices[0].message.content,
         cost_info={
@@ -76,6 +73,7 @@ def chatgpt3(history: list[dict[str, str]], model_name: str) -> str:
             "output_tokens": response.usage.completion_tokens,
         },
     )
+
 
 @costly(
     input_tokens=lambda kwargs: LLM_API_Estimation.prompt_to_input_tokens(**kwargs),
@@ -97,9 +95,10 @@ def chatgpt_prompt(
     return output_string
 
 
-
 @costly(
-    input_string=lambda kwargs: LLM_API_Estimation.get_raw_input_string_instructor(**kwargs),
+    input_tokens=lambda kwargs: LLM_API_Estimation.get_input_tokens_instructor(
+        **kwargs
+    ),
 )
 def chatgpt_instructor(
     messages: list[dict[str, str]],
@@ -117,6 +116,6 @@ def chatgpt_instructor(
         output=output_string,
         cost_info={
             "input_tokens": cost_info.usage.prompt_tokens,
-            "output_tokens": cost_info.usage.completion_tokens
-        }
+            "output_tokens": cost_info.usage.completion_tokens,
+        },
     )

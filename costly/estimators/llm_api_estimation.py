@@ -148,7 +148,10 @@ class LLM_API_Estimation:
 
     @staticmethod
     def output_tokens_estimate(
-        input_string: str = None, messages: list[dict[str, str]] = None, input_tokens: int = None, model: str = None
+        input_string: str = None,
+        messages: list[dict[str, str]] = None,
+        input_tokens: int = None,
+        model: str = None,
     ) -> tuple[int, int]:
         return [0, 2048]
 
@@ -235,14 +238,69 @@ class LLM_API_Estimation:
         )
 
     @staticmethod
-    def get_raw_input_string_instructor(
+    def get_input_tokens_instructor(
         messages: str | list[dict[str, str]],
         client,  #: "Instructor",
         model: str,
         response_model: BaseModel,
-        process_raw_prompt: bool = True,
-        **kwargs, # just let people pass in whatever they want
-    ) -> str:
+        **kwargs,  # just let people pass in whatever they want
+    ):
+        instructor_messages = LLM_API_Estimation._get_raw_messages_instructor(
+            messages=messages,
+            client=client,
+            model=model,
+            response_model=response_model,
+            process=True,
+            **kwargs,
+        )
+        messages = instructor_messages["messages"]
+        tools = instructor_messages["tools"]
+        functions = [tool["function"] for tool in tools if tool["type"] == "function"]
+
+        functions_tokens = 0
+        functions_tokens += 12
+        for function in functions:
+            function_tokens = LLM_API_Estimation.tokenize(
+                function["name"], model
+            ) + LLM_API_Estimation.tokenize(function["description"], model)
+            if "parameters" in function:
+                parameters = function["parameters"]
+                if "properties" in parameters:
+                    function_tokens += 11
+                    properties = parameters["properties"]
+                    for properties_key, properties_value in properties.items():
+                        function_tokens += LLM_API_Estimation.tokenize(
+                            properties_key, model
+                        )
+                        for field, field_value in properties_value.items():
+                            if field == "type" or field == "description":
+                                function_tokens += (
+                                    LLM_API_Estimation.tokenize(field_value, model) + 2
+                                )
+                            elif field == "enum":
+                                function_tokens -= 3
+                                for o in field_value:
+                                    function_tokens += (
+                                        LLM_API_Estimation.tokenize(o, model) + 3
+                                    )
+                            else:
+                                warnings.warn(
+                                    f"Field {field} not found in tokenization function"
+                                )
+            functions_tokens += function_tokens
+
+        messages_tokens = LLM_API_Estimation.messages_to_input_tokens(messages, model)
+        return messages_tokens + functions_tokens
+
+    @staticmethod
+    def _get_raw_messages_instructor(
+        messages: str | list[dict[str, str]],
+        client,  #: "Instructor",
+        model: str,
+        response_model: BaseModel,
+        process=True,
+        **kwargs,  # just let people pass in whatever they want
+    ) -> str | dict:
         if isinstance(messages, str):
             messages = [{"content": messages, "role": "user"}]
         log_stream = StringIO()
@@ -269,10 +327,9 @@ class LLM_API_Estimation:
         for line in log_contents.splitlines():
             if "Instructor Request" in line:
                 line = line.split("Instructor Request: ")[1]
-                if process_raw_prompt:
+                if process:
                     return LLM_API_Estimation._process_raw_prompt(line)
-                else:
-                    return line
+                return line
 
         warnings.warn(
             "No raw prompt found in logs. Maybe anthropic "
@@ -281,7 +338,7 @@ class LLM_API_Estimation:
         return ""
 
     @staticmethod
-    def _process_raw_prompt(input_string: str) -> str:
+    def _process_raw_prompt(input_string: str) -> dict:
         try:
             # Step 1: Split at 'new_kwargs='
             split_parts = input_string.split("new_kwargs=", 1)
@@ -312,43 +369,8 @@ class LLM_API_Estimation:
                     )
                     return input_string
 
-            # Step 3: Try to get actual useful stuff in life
-            if isinstance(json_data, dict):
-                try:
-                    messages, tools, tool_choice = (
-                        json_data.get("messages", []),
-                        json_data.get("tools", []),
-                        json_data.get("tool_choice", []),
-                    )
-                    str_messages = "".join([m["content"] for m in messages])
-                    funcs = [t["function"] for t in tools if "function" in t]
-                    func_names = [f.get("name", "") for f in funcs]
-                    func_descs = [f.get("description", "") for f in funcs]
-                    func_paras = [
-                        f.get("parameters", {}).get("properties", {}).values()
-                        for f in funcs
-                    ]  # list of lists of dicts
-                    func_para_values = [[p.values() for p in ps] for ps in func_paras]
-                    str_func_names = "".join(func_names)
-                    str_func_descs = "".join(func_descs)
-                    str_func_para_values = "".join(
-                        ["".join([str(i) for i in v]) for v in func_para_values]
-                    )
-                    return (
-                        str_messages
-                        + str_func_names
-                        + str_func_descs
-                        + str_func_para_values
-                    )
-
-                except KeyError:
-                    warnings.warn("Failed to extract relevant keys from decoded JSON.")
-                    return json_data
-            else:
-                warnings.warn(
-                    "Decoded JSON is not a dictionary. Returning the original JSON."
-                )
-                return json_data
+            if not isinstance(json_data, dict):
+                warnings.warn("Decoded JSON is not a dictionary..")
 
             return json_data
 
@@ -418,7 +440,9 @@ class LLM_API_Estimation:
                         messages, model
                     )
             except:
-                raise ValueError(f"Failed to tokenize input_string {input_string} or messages {messages}")
+                raise ValueError(
+                    f"Failed to tokenize input_string {input_string} or messages {messages}"
+                )
         if output_tokens_min is None or output_tokens_max is None:
             try:
                 assert output_string is not None
