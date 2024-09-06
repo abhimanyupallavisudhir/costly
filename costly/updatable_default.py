@@ -1,5 +1,11 @@
 from typing import Callable, Any
 from functools import wraps
+from dataclasses import dataclass
+
+
+@dataclass
+class DependentDefault:
+    dep: Callable
 
 
 def updatable_default(updator: Callable = lambda x, y: x | y, **defaults):
@@ -89,12 +95,17 @@ def updatable_default(updator: Callable = lambda x, y: x | y, **defaults):
     - "biasing" or "damping" some kind of computation
 
     The default updator is `|`.
+
+    You can also have a default be dependent on func, args and kwargs by
+    setting it to an object DependentDefault(dep=lambda ...)
     """
 
     def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
             for arg_name, default_value in defaults.items():
+                if isinstance(default_value, DependentDefault):
+                    default_value = default_value.dep(func, *args, **kwargs)
                 if arg_name in kwargs:
                     kwargs[arg_name] = updator(default_value, kwargs[arg_name])
                 # else:
@@ -117,11 +128,11 @@ def updatable_default(updator: Callable = lambda x, y: x | y, **defaults):
     return decorator
 
 
-def invoice(description: str):
+def invoice(description: str = None):
     """
     Example usage:
-    
-    @invoice("manufacturing cups")
+
+    @invoice()
     def manufacture_cups(**kwargs):
         manufacture_steel(**kwargs)
         educate_potters(**kwargs)
@@ -149,11 +160,15 @@ def invoice(description: str):
 
     manufacture_cups()
     ### prints:
-    ['manufacturing cups', 'manufacturing steel', 'mining iron']
-    ['manufacturing cups', 'educating potters', 'capturing enemies']
+    ['manufactur_cups', 'manufacturing steel', 'mining iron']
+    ['manufacture_cups', 'educating potters', 'capturing enemies']
+
+    If description is not provided, it will default to the function's name, 
+    like above.
 
     """
-
+    if description is None:
+        description = DependentDefault(dep=lambda func, *args, **kwargs: func.__name__)
     return updatable_default(
         description=description,
         updator=lambda default, new: (
