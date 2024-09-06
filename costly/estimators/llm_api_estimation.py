@@ -245,6 +245,9 @@ class LLM_API_Estimation:
         response_model: BaseModel,
         **kwargs,  # just let people pass in whatever they want
     ):
+        """
+        From: https://community.openai.com/t/how-to-calculate-the-tokens-when-using-function-call/266573/11
+        """
         instructor_messages = LLM_API_Estimation._get_raw_messages_instructor(
             messages=messages,
             client=client,
