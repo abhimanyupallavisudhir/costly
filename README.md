@@ -83,6 +83,7 @@ Tests for instructor currently fail.
 - [ ] Decide and document what the best way to "propagate" `description` (for breakdown purposes) through function calls is. Have the user manually write `def f(...): ... g(description = kwargs.get("description") + ["f"]`? Add a `@description("blabla")` decorator? Add a `@description` decorator that automatically appends the function name and arguments into `description`?
 - [x] Better solution for token counting for Chat messages (search `HACK` in the repo)
 - [ ] make instructor tests pass
+- [ ] support more models
 
 ```
 FAILED tests/test_estimators/test_llm_api_estimation.py::test_estimate_contains_exact[gpt-4-turbo-messages0] - AssertionError: ['Time estimate maximum 73.728 is less than truth 74.1186316999956']
