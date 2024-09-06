@@ -240,8 +240,9 @@ class LLM_API_Estimation:
         client,  #: "Instructor",
         model: str,
         response_model: BaseModel,
+        process_raw_prompt: bool = True,
         **kwargs, # just let people pass in whatever they want
-    ):
+    ) -> str:
         if isinstance(messages, str):
             messages = [{"content": messages, "role": "user"}]
         log_stream = StringIO()
@@ -268,7 +269,10 @@ class LLM_API_Estimation:
         for line in log_contents.splitlines():
             if "Instructor Request" in line:
                 line = line.split("Instructor Request: ")[1]
-                return LLM_API_Estimation._process_raw_prompt(line)
+                if process_raw_prompt:
+                    return LLM_API_Estimation._process_raw_prompt(line)
+                else:
+                    return line
 
         warnings.warn(
             "No raw prompt found in logs. Maybe anthropic "
