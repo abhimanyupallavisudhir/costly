@@ -79,10 +79,10 @@ Tests for instructor currently fail.
 ## TODO
 
 - [ ] Make it work with async
-- [ ] Support for locally run LLMs -- ideally need a cost & time estimator that takes into account your machine details, GPU pricing etc.
 - [ ] Decide and document what the best way to "propagate" `description` (for breakdown purposes) through function calls is. Have the user manually write `def f(...): ... g(description = kwargs.get("description") + ["f"]`? Add a `@description("blabla")` decorator? Add a `@description` decorator that automatically appends the function name and arguments into `description`?
 - [x] Better solution for token counting for Chat messages (search `HACK` in the repo)
 - [x] make instructor tests pass https://community.openai.com/t/how-to-calculate-the-tokens-when-using-function-call/266573/11
+- [ ] Support for locally run LLMs -- ideally need a cost & time estimator that takes into account your machine details, GPU pricing etc.
 - [ ] support more models
 
 Instructor tests don't really pass but I can kinda live with this. Lmk if anyone has a good way to count tokens from messages that includes tool calling (I'm using [this](https://community.openai.com/t/how-to-calculate-the-tokens-when-using-function-call/266573/11)).
