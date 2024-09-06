@@ -160,15 +160,21 @@ def invoice(description: str = None):
 
     manufacture_cups()
     ### prints:
-    ['manufactur_cups', 'manufacturing steel', 'mining iron']
-    ['manufacture_cups', 'educating potters', 'capturing enemies']
+    [{'func': 'manufacture_cups', 'args': [], 'kwargs': {}}, 'manufacturing steel', 'mining iron']
+    [{'func': 'manufacture_cups', 'args': [], 'kwargs': {}}, 'educating potters', 'capturing enemies']
 
-    If description is not provided, it will default to the function's name, 
-    like above.
+    If description is not provided, it will default to the function's name
+    and arguments like above.
 
     """
     if description is None:
-        description = DependentDefault(dep=lambda func, *args, **kwargs: func.__name__)
+        description = DependentDefault(
+            dep=lambda func, *args, **kwargs: {
+                "func": func.__name__,
+                "args": list(args),
+                "kwargs": kwargs,
+            }
+        )
     return updatable_default(
         description=description,
         updator=lambda default, new: (
