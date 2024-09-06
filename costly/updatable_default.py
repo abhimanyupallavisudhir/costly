@@ -97,19 +97,19 @@ def updatable_default(updator: Callable = lambda x, y: x | y, **defaults):
             for arg_name, default_value in defaults.items():
                 if arg_name in kwargs:
                     kwargs[arg_name] = updator(default_value, kwargs[arg_name])
-                else:
-                    import inspect
+                # else:
+                #     import inspect
 
-                    sig = inspect.signature(func)
-                    param_position = list(sig.parameters.keys()).index(arg_name)
-                    if param_position < len(args):
-                        args = list(args)
-                        args[param_position] = updator(
-                            default_value, args[param_position]
-                        )
-                        args = tuple(args)
-                    else:  # if arg_name not provided, add it and set it to default
-                        kwargs[arg_name] = default_value
+                #     sig = inspect.signature(func)
+                #     param_position = list(sig.parameters.keys()).index(arg_name)
+                #     if param_position < len(args):
+                #         args = list(args)
+                #         args[param_position] = updator(
+                #             default_value, args[param_position]
+                #         )
+                #         args = tuple(args)
+                else:  # if arg_name not provided, add it and set it to default
+                    kwargs[arg_name] = default_value
             return func(*args, **kwargs)
 
         return wrapper
@@ -117,35 +117,46 @@ def updatable_default(updator: Callable = lambda x, y: x | y, **defaults):
     return decorator
 
 
+def invoice(description: str):
+    """
+    Example usage:
+    
+    @invoice("manufacturing cups")
+    def manufacture_cups(**kwargs):
+        manufacture_steel(**kwargs)
+        educate_potters(**kwargs)
+        return
 
-# def _updatable_default(updator: Callable, arg_name: str, default: Any = None):
-#     """
-#     alternate implementation of `updatable_default`
-#     @_updatable_default(updator = lambda x, y: x + y, arg_name = "y", default = 1)
-#     def f(y):
-#         return y
+    @invoice("educating potters")
+    def educate_potters(**kwargs):
+        capture_enemies(**kwargs)
+        return
 
-#     f(3) # returns 4
-#     """
+    @invoice("manufacturing steel")
+    def manufacture_steel(**kwargs):
+        mine_iron(**kwargs)
+        return
 
-#     def decorator(func: Callable):
-#         @wraps(func)
-#         def wrapper(*args, **kwargs):
-#             if arg_name in kwargs:
-#                 kwargs[arg_name] = updator(default, kwargs[arg_name])
-#             else:
-#                 import inspect
+    @invoice("mining iron")
+    def mine_iron(**kwargs):
+        print(kwargs["description"])
+        return
 
-#                 sig = inspect.signature(func)
-#                 param_position = list(sig.parameters.keys()).index(arg_name)
-#                 if param_position < len(args):
-#                     args = list(args)
-#                     args[param_position] = updator(default, args[param_position])
-#                     args = tuple(args)
-#                 else:  # if arg_name not provided, add it and set it to default
-#                     kwargs[arg_name] = default
-#             return func(*args, **kwargs)
+    @invoice("capturing enemies")
+    def capture_enemies(**kwargs):
+        print(kwargs["description"])
+        return
 
-#         return wrapper
+    manufacture_cups()
+    ### prints:
+    ['manufacturing cups', 'manufacturing steel', 'mining iron']
+    ['manufacturing cups', 'educating potters', 'capturing enemies']
 
-#     return decorator
+    """
+
+    return updatable_default(
+        description=description,
+        updator=lambda default, new: (
+            new + [default] if isinstance(new, list) else [new] + [default]
+        ),
+    )
