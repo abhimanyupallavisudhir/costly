@@ -2,7 +2,7 @@ import tiktoken
 import logging
 from io import StringIO
 from pydantic import BaseModel
-import json
+import ast
 import warnings
 from unittest.mock import patch
 
@@ -348,31 +348,17 @@ class LLM_API_Estimation:
                 )
                 return input_string
 
-            json_string = split_parts[1].strip()
+            dict_string = split_parts[1].strip()
 
-            # Step 2: Attempt to load the remaining part as JSON
-            try:
-                translation_table = str.maketrans({"'": '"', '"': "'"})
-                json_string_trans = json_string.translate(translation_table)
-                json_data = json.loads(json_string_trans)
-            except json.JSONDecodeError:
+            # Step 2: Attempt to load the remaining part as a dict
+            dict_data = ast.literal_eval(dict_string)
+
+            if not isinstance(dict_data, dict):
                 warnings.warn(
-                    "Failed to decode JSON with the translated string. "
-                    "Will try the original string."
+                    f"Decoded object is not a dictionary, but a {type(dict_data)}."
                 )
-                try:
-                    json_data = json.loads(json_string)
-                except json.JSONDecodeError:
-                    warnings.warn(
-                        "Failed to decode JSON with the original string. "
-                        "Returning the original string."
-                    )
-                    return input_string
 
-            if not isinstance(json_data, dict):
-                warnings.warn("Decoded JSON is not a dictionary..")
-
-            return json_data
+            return dict_data
 
         except Exception as e:
             warnings.warn(
