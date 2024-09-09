@@ -24,13 +24,13 @@ PROMPTS = [
     "Write a short story.",
     "Write the bubblesort algorithm in Python.",
 ]
-MESSAGESS = [
-    [{"content": prompt, "role": "user"}] for prompt in PROMPTS
-]
-MODELS = LLM_API_Estimation.PRICES.keys() # TODO implement tests for non-OpenAI models
+MESSAGESS = [[{"content": prompt, "role": "user"}] for prompt in PROMPTS]
+MODELS = LLM_API_Estimation.PRICES.keys()  # TODO implement tests for non-OpenAI models
 MODELS_OPENAI = [model for model in MODELS if model.startswith("gpt")]
 PARAMSS = [
-    {"messages": messages, "model": model} for model in MODELS_OPENAI for messages in MESSAGESS
+    {"messages": messages, "model": model}
+    for model in MODELS_OPENAI
+    for messages in MESSAGESS
 ]
 PARAMSS_PROMPT = [
     {"prompt": prompt, "model": model} for model in MODELS_OPENAI for prompt in PROMPTS
@@ -158,12 +158,21 @@ def test_estimate_contains_exact_instructor(params):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("messages", MESSAGESS[:1])  # Use only the first message for this test
-@pytest.mark.parametrize("model", MODELS_OPENAI[:1])  # Use only the first model for this test
-def test_estimate_contains_exact_probs(messages, model):
-    return_probs_for = ["option1", "option2", "option3"]
+def test_estimate_contains_exact_probs():
+    return_probs_for = [str(n) for n in range(10)]
     costlog = Costlog()
-    
+
+    messages = [
+        {
+            "content": (
+                "Take a random guess as to what the 1,000,001st digit of pi is."
+                'Answer exactly "0", "1", ... or "9", with nothing else in your response.'
+            ),
+            "role": "user",
+        }
+    ]
+    model = "gpt-4o"
+
     real = chatgpt_probs(
         messages=messages,
         model=model,
@@ -171,7 +180,7 @@ def test_estimate_contains_exact_probs(messages, model):
         simulate=False,
         cost_log=costlog,
     )
-    
+
     sim = chatgpt_probs(
         messages=messages,
         model=model,
@@ -179,7 +188,7 @@ def test_estimate_contains_exact_probs(messages, model):
         simulate=True,
         cost_log=costlog,
     )
-    
+
     real_cost = costlog.items[0]
     sim_cost = costlog.items[1]
     check_cost_estimates(real_cost, sim_cost)
