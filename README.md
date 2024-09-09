@@ -78,7 +78,7 @@ Tests for instructor currently fail.
 
 ## TODO
 
-- [ ] Make it work with async
+- [x] Make it work with async
 - [x] Decide and document what the best way to "propagate" `description` (for breakdown purposes) through function calls is. Have the user manually write `def f(...): ... g(description = kwargs.get("description") + ["f"]`? Add a `@description("blabla")` decorator? Add a `@description` decorator that automatically appends the function name and arguments into `description`?
 - [x] Better solution for token counting for Chat messages (search `HACK` in the repo)
 - [x] make instructor tests pass https://community.openai.com/t/how-to-calculate-the-tokens-when-using-function-call/266573/11

@@ -2,9 +2,10 @@ import os
 import datetime
 import jsonlines
 import time
+import asyncio
 from dataclasses import dataclass
 from typing import Literal
-from contextlib import contextmanager
+from contextlib import contextmanager, asynccontextmanager
 from pathlib import Path
 
 
@@ -69,6 +70,13 @@ class Costlog:
 
     @contextmanager
     def new_item(self):
+        item = {}
+        t1 = time.perf_counter()
+        yield item, lambda: time.perf_counter() - t1
+        self.append(**item)
+
+    @asynccontextmanager
+    async def new_item_async(self):
         item = {}
         t1 = time.perf_counter()
         yield item, lambda: time.perf_counter() - t1

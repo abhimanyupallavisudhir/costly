@@ -28,7 +28,7 @@ class LLM_API_Estimation:
     Methods to help convert things to input_tokens or input_string:
     - messages_to_input_tokens(messages: list[dict[str, str]]) -> int
     - prompt_to_input_tokens(prompt: str, system_prompt: str = None, model: str = None) -> int
-    - get_raw_input_string_instructor(messages: str | list[dict[str, str]], client:Instructor, response_model:BaseModel) -> str
+    - get_raw_input_string_instructor(messages: str | list[dict[str, str]], response_model:BaseModel) -> str
 
     Private methods:
     - _get_cost_simulating_from_input_tokens_output_tokens(...) -> dict[str, float]
@@ -240,7 +240,6 @@ class LLM_API_Estimation:
     @staticmethod
     def get_input_tokens_instructor(
         messages: str | list[dict[str, str]],
-        client,  #: "Instructor",
         model: str,
         response_model: BaseModel,
         **kwargs,  # just let people pass in whatever they want
@@ -250,7 +249,6 @@ class LLM_API_Estimation:
         """
         instructor_messages = LLM_API_Estimation._get_raw_messages_instructor(
             messages=messages,
-            client=client,
             model=model,
             response_model=response_model,
             process=True,
@@ -298,12 +296,16 @@ class LLM_API_Estimation:
     @staticmethod
     def _get_raw_messages_instructor(
         messages: str | list[dict[str, str]],
-        client,  #: "Instructor",
         model: str,
         response_model: BaseModel,
         process=True,
         **kwargs,  # just let people pass in whatever they want
     ) -> str | dict:
+        
+        import instructor
+        from openai import OpenAI
+        client = instructor.from_openai(OpenAI(api_key='MOCK'))
+        
         if isinstance(messages, str):
             messages = [{"content": messages, "role": "user"}]
         log_stream = StringIO()
@@ -325,7 +327,7 @@ class LLM_API_Estimation:
                 # there WILL be an error
                 # there's nothing you can do about it
                 pass  # cope and seethe
-
+        
         log_contents = log_stream.getvalue()
         for line in log_contents.splitlines():
             if "Instructor Request" in line:
@@ -338,36 +340,29 @@ class LLM_API_Estimation:
             "No raw prompt found in logs. Maybe anthropic "
             "isn't supported or something idk"
         )
-        return ""
+        return ""        
 
     @staticmethod
     def _process_raw_prompt(input_string: str) -> dict:
-        try:
-            # Step 1: Split at 'new_kwargs='
-            split_parts = input_string.split("new_kwargs=", 1)
-            if len(split_parts) < 2:
-                warnings.warn(
-                    "Failed to split the string at 'new_kwargs='. Returning the original string."
-                )
-                return input_string
-
-            dict_string = split_parts[1].strip()
-
-            # Step 2: Attempt to load the remaining part as a dict
-            dict_data = ast.literal_eval(dict_string)
-
-            if not isinstance(dict_data, dict):
-                warnings.warn(
-                    f"Decoded object is not a dictionary, but a {type(dict_data)}."
-                )
-
-            return dict_data
-
-        except Exception as e:
+        # Step 1: Split at 'new_kwargs='
+        split_parts = input_string.split("new_kwargs=", 1)
+        if len(split_parts) < 2:
             warnings.warn(
-                f"An unexpected error occurred: {e}. Returning the original string."
+                "Failed to split the string at 'new_kwargs='. Returning the original string."
             )
             return input_string
+
+        dict_string = split_parts[1].strip()
+
+        # Step 2: Attempt to load the remaining part as a dict
+        dict_data = ast.literal_eval(dict_string)
+
+        if not isinstance(dict_data, dict):
+            warnings.warn(
+                f"Decoded object is not a dictionary, but a {type(dict_data)}."
+            )
+
+        return dict_data
 
     """
     Cases:
