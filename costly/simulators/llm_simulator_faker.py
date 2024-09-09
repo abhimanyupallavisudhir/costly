@@ -130,6 +130,37 @@ class LLM_Simulator_Faker:
         return response
 
     @staticmethod
+    def simulate_llm_probs(
+        return_probs_for: list[str],
+        input_string: str = None,  # must supply at least one of input_string, input_tokens, messages
+        input_tokens: int = None,
+        messages: list[dict[str, str]] = None,
+        model: str = None,
+        cost_log: Costlog = None,
+        description: list[str] = None,
+    ) -> dict[str, float]:
+        """
+        Simulate a dict with keys as return_probs_for and values as probabilities.
+        """
+        probs_ = {key: random.random() for key in return_probs_for}
+        total = sum(probs_.values())
+        probs = {key: value / total for key, value in probs_.items()}
+        if cost_log is not None:
+            assert model is not None, "model is required for tracking costs"
+            with cost_log.new_item() as (item, _):
+                cost_item = LLM_API_Estimation.get_cost_simulating(
+                    input_string=input_string,
+                    input_tokens=input_tokens,
+                    output_tokens_min=0,
+                    output_tokens_max=max(len(key) for key in return_probs_for),
+                    model=model,
+                    messages=messages,
+                    description=description,
+                )
+                item.update(cost_item)
+        return probs
+
+    @staticmethod
     def fake(t: type):
         # sort tryfuncs by priority
         try_funcs_in_order = sorted(

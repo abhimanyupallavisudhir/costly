@@ -12,6 +12,7 @@ from tests.example_functions import (
     chatgpt,
     chatgpt_prompt,
     chatgpt_instructor,
+    chatgpt_probs,
     CLIENT,
     PERSONINFO,
     FOOMODEL,
@@ -151,6 +152,34 @@ def test_estimate_contains_exact_instructor(params):
         simulate=True,
         cost_log=costlog,
     )
+    real_cost = costlog.items[0]
+    sim_cost = costlog.items[1]
+    check_cost_estimates(real_cost, sim_cost)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("messages", MESSAGESS[:1])  # Use only the first message for this test
+@pytest.mark.parametrize("model", MODELS_OPENAI[:1])  # Use only the first model for this test
+def test_estimate_contains_exact_probs(messages, model):
+    return_probs_for = ["option1", "option2", "option3"]
+    costlog = Costlog()
+    
+    real = chatgpt_probs(
+        messages=messages,
+        model=model,
+        return_probs_for=return_probs_for,
+        simulate=False,
+        cost_log=costlog,
+    )
+    
+    sim = chatgpt_probs(
+        messages=messages,
+        model=model,
+        return_probs_for=return_probs_for,
+        simulate=True,
+        cost_log=costlog,
+    )
+    
     real_cost = costlog.items[0]
     sim_cost = costlog.items[1]
     check_cost_estimates(real_cost, sim_cost)
