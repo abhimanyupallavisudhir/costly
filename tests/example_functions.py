@@ -198,3 +198,35 @@ async def chatgpt_instructor_async(
             "output_tokens": cost_info.usage.completion_tokens,
         },
     )
+
+
+@costly()
+def chatgpt_probs(messages: list[dict[str, str]], model: str, return_probs_for: list[str]) -> dict[str, float]:
+    from openai import OpenAI
+
+    client = OpenAI()
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        logprobs=True,
+        top_logprobs=len(return_probs_for)
+    )
+    
+    logprobs = response.choices[0].logprobs.content[0].top_logprobs
+    probs = {option: 0 for option in return_probs_for}
+    
+    for logprob in logprobs:
+        if logprob.token in return_probs_for:
+            probs[logprob.token] = 2 ** logprob.logprob  # Convert log probability to probability
+    
+    # Normalize probabilities
+    total = sum(probs.values())
+    normalized_probs = {k: v / total for k, v in probs.items()}
+    
+    return CostlyResponse(
+        output=normalized_probs,
+        cost_info={
+            "input_tokens": response.usage.prompt_tokens,
+            "output_tokens": response.usage.completion_tokens,
+        },
+    )
