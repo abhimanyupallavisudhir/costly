@@ -3,6 +3,7 @@ from typing import Any
 from pydantic import BaseModel
 from costly import costly, CostlyResponse
 from costly.estimators.llm_api_estimation import LLM_API_Estimation
+from costly.simulators.llm_simulator_faker import LLM_Simulator_Faker
 from openai import OpenAI, AsyncOpenAI
 from instructor import Instructor
 import asyncio
@@ -200,7 +201,9 @@ async def chatgpt_instructor_async(
     )
 
 
-@costly()
+@costly(
+    simulator=LLM_Simulator_Faker.simulate_llm_probs,
+)
 def chatgpt_probs(messages: list[dict[str, str]], model: str, return_probs_for: list[str]) -> dict[str, float]:
     from openai import OpenAI
 
