@@ -54,7 +54,7 @@ def costly(
                 return simulator(**simulator_kwargs)
 
             if cost_log is not None:
-                async with cost_log.new_item() as (item, timer):
+                async with cost_log.new_item_async() as (item, timer):
                     output = await func(*args, **kwargs)  # await the coroutine
                     cost_info = {}
                     if isinstance(output, CostlyResponse):
