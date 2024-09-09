@@ -166,12 +166,13 @@ class LLM_Simulator_Faker:
         try_funcs_in_order = sorted(
             LLM_Simulator_Faker.tryfuncs, key=lambda x: x["priority"], reverse=True
         )
+        exceptions = []
         for try_func in try_funcs_in_order:
             try:
                 return try_func["func"](t)
-            except:
-                pass
-        raise ValueError(f"Unsupported type: {t}")
+            except Exception as e:
+                exceptions.append({"try_func": try_func, "exception": e})
+        raise ValueError(f"Unsupported type: {t}\n{exceptions}")
 
     @staticmethod
     def _fake_basic(t: type):
