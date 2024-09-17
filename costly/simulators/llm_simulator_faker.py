@@ -307,3 +307,62 @@ class LLM_Simulator_Faker:
         dict: dict[str, str],
         object: str,
     }
+
+# earlier method based on Polyfactory
+# no longer in use
+# 
+# # Function to dynamically create a Polyfactory factory class for any Pydantic model
+# def create_factory_for_model(model: Type[BaseModel]) -> Type[ModelFactory]:
+#     type_based_overrides = {
+#         ForecastingQuestion: lambda: pick_random_fq(
+#             get_data_path() / "fq" / "real" / "test_formatted.jsonl"
+#         ),
+#         ForecastingQuestion_stripped: lambda: pick_random_fq(
+#             get_data_path() / "fq" / "real" / "test_formatted.jsonl", strip=True
+#         ),
+#         Prob: lambda: Prob(prob=random.uniform(0.01, 0.99)),
+#         Prob_cot: lambda: Prob_cot(
+#             chain_of_thought="I'm thinking about this with a lot of attention and have come to the conclusion",
+#             prob=random.uniform(0.01, 0.99),
+#         ),
+#         float: lambda: random.uniform(0.01, 9.99),
+#         # float: lambda: random.uniform(0.01, 0.99),
+#     }
+
+#     # Define the dynamic factory class
+#     class DynamicFactory(ModelFactory[model]):
+#         __model__ = model
+
+#         # @classmethod
+#         # def get_field_value(
+#         #     cls, field_meta: PydanticFieldMeta, *args: Any, **kwargs: Any
+#         # ):
+
+#         #     # if not field_meta.name:
+#         #     #     return super().get_field_value(field_meta, *args, **kwargs)
+
+#         #     # field_name = field_meta.name
+#         #     # field = model.model_fields[field_name]
+#         #     # if field.annotation in type_based_overrides:
+#         #     #     return type_based_overrides[field.annotation]()
+#         #     # return super().get_field_value(field_meta, *args, **kwargs)
+
+#         #     if field_meta.annotation in type_based_overrides:
+#         #         # Return the pre-generated instance to prevent recursion
+#         #         return type_based_overrides[field_meta.annotation]()
+
+#         #     # For other fields, use the default generation logic
+#         #     return super().get_field_value(field_meta, *args, **kwargs)
+
+#         @classmethod
+#         def build(cls, *args: Any, **kwargs: Any) -> BaseModel:
+#             # If the model has a type-based override, return it directly
+#             if cls.__model__ in type_based_overrides:
+#                 return type_based_overrides[cls.__model__]()
+
+#             # Otherwise, proceed with default behavior
+#             return super().build(*args, **kwargs)
+
+#     return DynamicFactory
+
+#     return DynamicFactory
