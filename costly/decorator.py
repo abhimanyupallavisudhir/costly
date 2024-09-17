@@ -1,4 +1,5 @@
 import asyncio
+import warnings
 from functools import wraps
 from dataclasses import dataclass
 from copy import deepcopy
@@ -75,6 +76,15 @@ def costly(
                     cost_item = estimator(**estimator_kwargs)
                     item.update(cost_item)
             else:
+                warnings.warn(
+                    f"`cost_log` is None for the function:\n"
+                    f"{func.__name__}\n"
+                    f"with args:\n"
+                    f"{args}\n"
+                    f"and kwargs:\n"
+                    f"{kwargs}\n"
+                    "Maybe cost_log is not being passed through in some part of your logic?"
+                )
                 output = await func(*args, **kwargs)
                 if isinstance(output, CostlyResponse):
                     output, cost_info = output.output, output.cost_info
@@ -134,6 +144,15 @@ def costly(
                     cost_item = estimator(**estimator_kwargs)
                     item.update(cost_item)
             else:
+                warnings.warn(
+                    f"`cost_log` is None for the function:\n"
+                    f"{func.__name__}\n"
+                    f"with args:\n"
+                    f"{args}\n"
+                    f"and kwargs:\n"
+                    f"{kwargs}\n"
+                    "Maybe cost_log is not being passed through in some part of your logic?"
+                )
                 output = func(*args, **kwargs)
                 if isinstance(output, CostlyResponse):
                     output, cost_info = output.output, output.cost_info
