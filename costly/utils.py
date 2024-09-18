@@ -1,5 +1,7 @@
 from types import NoneType, GenericAlias, UnionType
 from typing import Any, Optional, Union, get_origin, get_args, Sequence, Mapping
+import json
+from pydantic import BaseModel
 
 def isinstance_better(v, t: type) -> bool:
 
@@ -21,3 +23,25 @@ def isinstance_better(v, t: type) -> bool:
             for k, v in v.items()
         )
     return None
+
+def json_serializable(value):
+    try:
+        json.dumps(value)
+        return True
+    except (TypeError, ValueError):
+        return False
+
+def make_json_serializable(value):
+    if isinstance(value, dict):
+        return {k: make_json_serializable(v) for k, v in value.items()}
+    elif isinstance(value, list):
+        return [make_json_serializable(v) for v in value]
+    elif isinstance(value, tuple):
+        return tuple(make_json_serializable(v) for v in value)
+    elif isinstance(value, set):
+        return set(make_json_serializable(v) for v in value)
+    elif isinstance(value, BaseModel):
+        return make_json_serializable(value.model_dump(mode="json"))
+    elif not json_serializable(value):
+        return str(value)
+    return value

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Literal
 from contextlib import contextmanager, asynccontextmanager
 from pathlib import Path
-
+from costly.utils import make_json_serializable
 
 class Costlog:
 
@@ -62,7 +62,7 @@ class Costlog:
         match self.mode:
             case "jsonl":
                 with jsonlines.open(self.path, "a") as f:
-                    f.write(kwargs)
+                    f.write(make_json_serializable(kwargs))
             case "memory":
                 self.items.append(kwargs)
         for key in self.totals:
