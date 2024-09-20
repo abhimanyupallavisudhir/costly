@@ -4,6 +4,7 @@ from io import StringIO
 from pydantic import BaseModel
 import ast
 import warnings
+from costly.utils import CostlyWarning
 from unittest.mock import patch
 
 
@@ -169,7 +170,8 @@ class LLM_API_Estimation:
             encoding = tiktoken.encoding_for_model(model)
         except KeyError:
             warnings.warn(
-                "messages_to_input_tokens: model not found. Using cl100k_base encoding."
+                "messages_to_input_tokens: model not found. Using cl100k_base encoding.",
+                CostlyWarning
             )
             encoding = tiktoken.get_encoding("cl100k_base")
         if model in {
@@ -189,21 +191,24 @@ class LLM_API_Estimation:
             tokens_per_name = -1  # if there's a name, the role is omitted
         elif "gpt-3.5-turbo" in model:
             warnings.warn(
-                "messages_to_input_tokens: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0613."
+                "messages_to_input_tokens: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0613.",
+                CostlyWarning
             )
             return cls.messages_to_input_tokens(
                 messages, model="gpt-3.5-turbo-0613"
             )
         elif "gpt-4" in model:
             warnings.warn(
-                "messages_to_input_tokens: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613."
+                "messages_to_input_tokens: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613.",
+                CostlyWarning
             )
             return cls.messages_to_input_tokens(
                 messages, model="gpt-4-0613"
             )
         else:
             warnings.warn(
-                f"messages_to_input_tokens: model {model} not found. Returning num tokens assuming gpt-4-0613."
+                f"messages_to_input_tokens: model {model} not found. Returning num tokens assuming gpt-4-0613.",
+                CostlyWarning
             )
             return cls.messages_to_input_tokens(
                 messages, model="gpt-4-0613"
@@ -291,7 +296,8 @@ class LLM_API_Estimation:
                                     )
                             else:
                                 warnings.warn(
-                                    f"Field {field} not found in tokenization function"
+                                    f"Field {field} not found in tokenization function",
+                                    CostlyWarning
                                 )
             functions_tokens += function_tokens
 
@@ -344,7 +350,8 @@ class LLM_API_Estimation:
 
         warnings.warn(
             "No raw prompt found in logs. Maybe anthropic "
-            "isn't supported or something idk"
+            "isn't supported or something idk",
+            CostlyWarning
         )
         return ""        
 
@@ -354,7 +361,8 @@ class LLM_API_Estimation:
         split_parts = input_string.split("new_kwargs=", 1)
         if len(split_parts) < 2:
             warnings.warn(
-                "Failed to split the string at 'new_kwargs='. Returning the original string."
+                "Failed to split the string at 'new_kwargs='. Returning the original string.",
+                CostlyWarning
             )
             return input_string
 
@@ -365,7 +373,8 @@ class LLM_API_Estimation:
 
         if not isinstance(dict_data, dict):
             warnings.warn(
-                f"Decoded object is not a dictionary, but a {type(dict_data)}."
+                f"Decoded object is not a dictionary, but a {type(dict_data)}.",
+                CostlyWarning
             )
 
         return dict_data

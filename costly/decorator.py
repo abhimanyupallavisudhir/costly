@@ -4,6 +4,7 @@ from functools import wraps
 from dataclasses import dataclass
 from copy import deepcopy
 from typing import Callable, Any
+from costly.utils import CostlyWarning
 from costly.costlog import Costlog
 from costly.simulators.llm_simulator_faker import LLM_Simulator_Faker
 from costly.estimators.llm_api_estimation import LLM_API_Estimation
@@ -83,7 +84,8 @@ def costly(
                     f"{args}\n"
                     f"and kwargs:\n"
                     f"{kwargs}\n"
-                    "Maybe cost_log is not being passed through in some part of your logic?"
+                    "Maybe cost_log is not being passed through in some part of your logic?",
+                    CostlyWarning
                 )
                 output = await func(*args, **kwargs)
                 if isinstance(output, CostlyResponse):
@@ -151,7 +153,8 @@ def costly(
                     f"{args}\n"
                     f"and kwargs:\n"
                     f"{kwargs}\n"
-                    "Maybe cost_log is not being passed through in some part of your logic?"
+                    "Maybe cost_log is not being passed through in some part of your logic?",
+                    CostlyWarning
                 )
                 output = func(*args, **kwargs)
                 if isinstance(output, CostlyResponse):

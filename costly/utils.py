@@ -3,6 +3,10 @@ from typing import Any, Optional, Union, get_origin, get_args, Sequence, Mapping
 import json
 from pydantic import BaseModel
 
+class CostlyWarning(Warning):
+    pass
+
+
 def isinstance_better(v, t: type) -> bool:
 
     origin = get_origin(t)
