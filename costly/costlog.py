@@ -9,6 +9,7 @@ from contextlib import contextmanager, asynccontextmanager
 from pathlib import Path
 from costly.utils import make_json_serializable
 
+
 class Costlog:
 
     def __init__(
@@ -39,9 +40,13 @@ class Costlog:
                     self.path = Path(path)
                 if self.path.exists():
                     if overwrite is None:
-                        overwrite = input(f"Costlog file {self.path} already exists. Overwrite? (y/n) ")
+                        overwrite = input(
+                            f"Costlog file {self.path} already exists. Overwrite? (y/n) "
+                        )
                     if overwrite not in ["y", True]:
-                        raise FileExistsError(f"Costlog file {self.path} already exists.")
+                        raise FileExistsError(
+                            f"Costlog file {self.path} already exists."
+                        )
                     else:
                         self.path.unlink()
                 else:
@@ -54,9 +59,19 @@ class Costlog:
                 raise ValueError(f"Invalid mode: {mode}")
         self.mode = mode
         if totals_keys is None:
-            totals_keys = {"cost_min", "cost_max", "time_min", "time_max", "calls"}
+            totals_keys = {
+                "cost_min",
+                "cost_max",
+                "time_min",
+                "time_max",
+                "calls",
+                "input_tokens",
+                "output_tokens_min",
+                "output_tokens_max",
+            }
         self.totals_keys = totals_keys
         self.totals = {key: 0.0 for key in totals_keys}
+        self.totals_by_model = {}
 
     def append(self, **kwargs):
         match self.mode:
@@ -67,6 +82,13 @@ class Costlog:
                 self.items.append(kwargs)
         for key in self.totals:
             self.totals[key] += kwargs.get(key, 0.0)
+            if kwargs.get("model", "__UNKNOWN__") not in self.totals_by_model:
+                self.totals_by_model[kwargs.get("model", "__UNKNOWN__")] = {
+                    key: 0.0 for key in self.totals_keys
+                }
+            self.totals_by_model[kwargs.get("model", "__UNKNOWN__")][key] += kwargs.get(
+                key, 0.0
+            )
 
     @contextmanager
     def new_item(self):
