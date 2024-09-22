@@ -62,6 +62,11 @@ class LLM_API_Estimation:
             "output_tokens": 15.0e-6,
             "time": 18e-3,
         },
+        "gpt-4o-2024-08-06": {
+            "input_tokens": 2.50e-6,
+            "output_tokens": 10.0e-6,
+            "time": 18e-3,
+        },
         "gpt-4o-mini": {
             "input_tokens": 0.15e-6,
             "output_tokens": 0.6e-6,
