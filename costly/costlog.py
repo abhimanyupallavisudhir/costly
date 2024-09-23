@@ -10,7 +10,7 @@ from pathlib import Path
 from costly.utils import make_json_serializable
 
 
-class Costlog:
+class Costlog(dict):
 
     def __init__(
         self,
@@ -72,6 +72,7 @@ class Costlog:
         self.totals_keys = totals_keys
         self.totals = {key: 0.0 for key in totals_keys}
         self.totals_by_model = {}
+        super().__init__(self.totals)
 
     def append(self, **kwargs):
         match self.mode:
