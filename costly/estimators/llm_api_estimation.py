@@ -57,6 +57,11 @@ class LLM_API_Estimation:
     """
 
     PRICES = {
+        "__default__": {
+            "input_tokens": 5.0e-6,
+            "output_tokens": 15.0e-6,
+            "time": 18e-3,
+        },
         "gpt-4o": {
             "input_tokens": 5.0e-6,
             "output_tokens": 15.0e-6,
@@ -117,7 +122,8 @@ class LLM_API_Estimation:
 
         matching_keys = [key for key in supported_models if model.startswith(key)]
         if not matching_keys:
-            raise ValueError(f"No matching model found for {model}")
+            warnings.warn(f"No matching model found for {model}. Assuming `__default__`.")
+            return "__default__"
 
         return max(matching_keys, key=len)
 
