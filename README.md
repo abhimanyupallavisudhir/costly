@@ -1,6 +1,8 @@
 # costly
 Estimate costs and running times of complex LLM workflows/experiments/pipelines in advance before spending money, via simulations. Just put `@costly()` on the load-bearing function; make sure all functions that call it pass `**kwargs` to it and call your complex function with `simulate=True` and some `cost_log: Costlog` object. See [examples.ipynb](examples.ipynb) for more details.
 
+(Actually you don't have to pass `cost_log` and `simulate` throughout; you can just define a global `cost_log` and `simulate` at the top of the file that contains your `@costly` functions and pass them as defaults to your `@costly` functions.)
+
 https://github.com/abhimanyupallavisudhir/costly
 
 ## Installation
