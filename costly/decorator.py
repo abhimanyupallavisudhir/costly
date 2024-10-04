@@ -20,21 +20,40 @@ class CostlyResponse:
 def costly(
     simulator: Callable = LLM_Simulator_Faker.simulate_llm_call,
     estimator: Callable = LLM_API_Estimation.get_cost_real,
-    **param_mappings: dict[str, Callable]
+    **param_mappings: dict[str, Callable],
 ):
     def decorator(func: Callable) -> Callable:
+        sig = signature(func)
+
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
-            cost_log = kwargs.pop("cost_log", None)
+            # Get default value for cost_log if it's defined in the function
+            # This is necessary for global cost_logs, due to Python's very weird
+            # behaviour: although it allows you to update a global cost_log from
+            # inside a function (because it's mutable), it doesn't allow you to
+            # do so if it's passed as a *default argument*, only if it's explicitly
+            # passed (which we can't do because the whole point of allowing it as a
+            # global variable is to avoid passing it everywhere in your code explicitly).
+            # This is very confusing to me because I thought the standard quirk of Python
+            # was that it made defaults mutable, but like this is the only scenario when
+            # it would be remotely useful, and it's not?
+            # https://chatgpt.com/share/67005ec7-c7fc-8005-b61f-a3e2992519b1
+            if "cost_log" not in kwargs:
+                cost_log_param = sig.parameters.get("cost_log")
+                if cost_log_param and cost_log_param.default is not Parameter.empty:
+                    cost_log = cost_log_param.default
+                else:
+                    cost_log = None
+            else:
+                cost_log = kwargs.pop("cost_log")
+
             simulate = kwargs.pop("simulate", False)
             description = kwargs.pop("description", None)
-            
-            # Get the function's signature
-            sig = signature(func)
-            
+
             # Create a dictionary with default values
             options = {
-                k: v.default for k, v in sig.parameters.items()
+                k: v.default
+                for k, v in sig.parameters.items()
                 if v.default is not Parameter.empty
             }
 
@@ -85,7 +104,7 @@ def costly(
                     f"and kwargs:\n"
                     f"{kwargs}\n"
                     "Maybe cost_log is not being passed through in some part of your logic?",
-                    CostlyWarning
+                    CostlyWarning,
                 )
                 output = await func(*args, **kwargs)
                 if isinstance(output, CostlyResponse):
@@ -94,16 +113,25 @@ def costly(
 
         @wraps(func)
         def sync_wrapper(*args, **kwargs):
-            cost_log = kwargs.pop("cost_log", None)
+            if "cost_log" not in kwargs:
+                cost_log_param = sig.parameters.get("cost_log")
+                if cost_log_param and cost_log_param.default is not Parameter.empty:
+                    cost_log = cost_log_param.default
+                else:
+                    cost_log = None
+            else:
+                cost_log = kwargs.pop("cost_log")
+
             simulate = kwargs.pop("simulate", False)
             description = kwargs.pop("description", None)
-            
+
             # Get the function's signature
             sig = signature(func)
-            
+
             # Create a dictionary with default values
             options = {
-                k: v.default for k, v in sig.parameters.items()
+                k: v.default
+                for k, v in sig.parameters.items()
                 if v.default is not Parameter.empty
             }
 
@@ -154,7 +182,7 @@ def costly(
                     f"and kwargs:\n"
                     f"{kwargs}\n"
                     "Maybe cost_log is not being passed through in some part of your logic?",
-                    CostlyWarning
+                    CostlyWarning,
                 )
                 output = func(*args, **kwargs)
                 if isinstance(output, CostlyResponse):
