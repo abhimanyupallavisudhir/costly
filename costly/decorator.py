@@ -20,26 +20,28 @@ class CostlyResponse:
 def costly(
     simulator: Callable = LLM_Simulator_Faker.simulate_llm_call,
     estimator: Callable = LLM_API_Estimation.get_cost_real,
-    **param_mappings: dict[str, Callable]
+    **param_mappings: dict[str, Callable],
 ):
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
-            cost_log = kwargs.pop("cost_log", None)
-            simulate = kwargs.pop("simulate", False)
-            description = kwargs.pop("description", None)
-            
+
             # Get the function's signature
             sig = signature(func)
-            
+
             # Create a dictionary with default values
             options = {
-                k: v.default for k, v in sig.parameters.items()
+                k: v.default
+                for k, v in sig.parameters.items()
                 if v.default is not Parameter.empty
             }
 
             # Update default kwargs with provided kwargs
             options.update(kwargs)
+
+            cost_log = options.pop("cost_log", None)
+            simulate = options.pop("simulate", False)
+            description = options.pop("description", None)
 
             # apply param_mappings
             costly_kwargs = options | {
@@ -57,7 +59,7 @@ def costly(
 
             if cost_log is not None:
                 async with cost_log.new_item_async() as (item, timer):
-                    output = await func(*args, **kwargs)  # await the coroutine
+                    output = await func(*args, **options)  # await the coroutine
                     cost_info = {}
                     if isinstance(output, CostlyResponse):
                         output, cost_info = output.output, output.cost_info
@@ -85,30 +87,32 @@ def costly(
                     f"and kwargs:\n"
                     f"{kwargs}\n"
                     "Maybe cost_log is not being passed through in some part of your logic?",
-                    CostlyWarning
+                    CostlyWarning,
                 )
-                output = await func(*args, **kwargs)
+                output = await func(*args, **options)
                 if isinstance(output, CostlyResponse):
                     output, cost_info = output.output, output.cost_info
             return output
 
         @wraps(func)
         def sync_wrapper(*args, **kwargs):
-            cost_log = kwargs.pop("cost_log", None)
-            simulate = kwargs.pop("simulate", False)
-            description = kwargs.pop("description", None)
-            
+
             # Get the function's signature
             sig = signature(func)
-            
+
             # Create a dictionary with default values
             options = {
-                k: v.default for k, v in sig.parameters.items()
+                k: v.default
+                for k, v in sig.parameters.items()
                 if v.default is not Parameter.empty
             }
 
             # Update default kwargs with provided kwargs
             options.update(kwargs)
+
+            cost_log = options.pop("cost_log", None)
+            simulate = options.pop("simulate", False)
+            description = options.pop("description", None)
 
             # apply param_mappings
             costly_kwargs = options | {
@@ -126,7 +130,7 @@ def costly(
 
             if cost_log is not None:
                 with cost_log.new_item() as (item, timer):
-                    output = func(*args, **kwargs)  # call function normally
+                    output = func(*args, **options)  # call function normally
                     cost_info = {}
                     if isinstance(output, CostlyResponse):
                         output, cost_info = output.output, output.cost_info
@@ -154,9 +158,9 @@ def costly(
                     f"and kwargs:\n"
                     f"{kwargs}\n"
                     "Maybe cost_log is not being passed through in some part of your logic?",
-                    CostlyWarning
+                    CostlyWarning,
                 )
-                output = func(*args, **kwargs)
+                output = func(*args, **options)
                 if isinstance(output, CostlyResponse):
                     output, cost_info = output.output, output.cost_info
             return output
