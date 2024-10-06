@@ -3,6 +3,8 @@ Estimate costs and running times of complex LLM workflows/experiments/pipelines 
 
 (Actually you don't have to pass `cost_log` and `simulate` throughout; you can just define a global `cost_log` and `simulate` at the top of the file that contains your `@costly` functions and pass them as defaults to your `@costly` functions.)
 
+(Pass `@costly(disable_costly=True)` to disable costly for a function. E.g. you may set `disable_costly` to be a global variable and pass it to your `@costly` decorators.)
+
 https://github.com/abhimanyupallavisudhir/costly
 
 ## Installation

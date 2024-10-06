@@ -20,11 +20,17 @@ class CostlyResponse:
 def costly(
     simulator: Callable = LLM_Simulator_Faker.simulate_llm_call,
     estimator: Callable = LLM_API_Estimation.get_cost_real,
+    disable_costly: bool = False,
     **param_mappings: dict[str, Callable],
 ):
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
+            if disable_costly:
+                output = await func(*args, **options)
+                if isinstance(output, CostlyResponse):
+                    output, cost_info = output.output, output.cost_info
+                return output
 
             # Get the function's signature
             sig = signature(func)
@@ -57,7 +63,11 @@ def costly(
                 } | {"cost_log": cost_log, "description": description}
                 return simulator(**simulator_kwargs)
 
-            if cost_log is not None:
+            if cost_log is None:
+                output = await func(*args, **options)
+                if isinstance(output, CostlyResponse):
+                    output, cost_info = output.output, output.cost_info
+            else:
                 async with cost_log.new_item_async() as (item, timer):
                     output = await func(*args, **options)  # await the coroutine
                     cost_info = {}
@@ -78,24 +88,15 @@ def costly(
                     )
                     cost_item = estimator(**estimator_kwargs)
                     item.update(cost_item)
-            else:
-                warnings.warn(
-                    f"`cost_log` is None for the function:\n"
-                    f"{func.__name__}\n"
-                    f"with args:\n"
-                    f"{args}\n"
-                    f"and kwargs:\n"
-                    f"{kwargs}\n"
-                    "Maybe cost_log is not being passed through in some part of your logic?",
-                    CostlyWarning,
-                )
-                output = await func(*args, **options)
-                if isinstance(output, CostlyResponse):
-                    output, cost_info = output.output, output.cost_info
             return output
 
         @wraps(func)
         def sync_wrapper(*args, **kwargs):
+            if disable_costly:
+                output = func(*args, **kwargs)
+                if isinstance(output, CostlyResponse):
+                    output, cost_info = output.output, output.cost_info
+                return output
 
             # Get the function's signature
             sig = signature(func)
@@ -128,7 +129,11 @@ def costly(
                 } | {"cost_log": cost_log, "description": description}
                 return simulator(**simulator_kwargs)
 
-            if cost_log is not None:
+            if cost_log is None:
+                output = func(*args, **options)
+                if isinstance(output, CostlyResponse):
+                    output, cost_info = output.output, output.cost_info
+            else:
                 with cost_log.new_item() as (item, timer):
                     output = func(*args, **options)  # call function normally
                     cost_info = {}
@@ -149,20 +154,6 @@ def costly(
                     )
                     cost_item = estimator(**estimator_kwargs)
                     item.update(cost_item)
-            else:
-                warnings.warn(
-                    f"`cost_log` is None for the function:\n"
-                    f"{func.__name__}\n"
-                    f"with args:\n"
-                    f"{args}\n"
-                    f"and kwargs:\n"
-                    f"{kwargs}\n"
-                    "Maybe cost_log is not being passed through in some part of your logic?",
-                    CostlyWarning,
-                )
-                output = func(*args, **options)
-                if isinstance(output, CostlyResponse):
-                    output, cost_info = output.output, output.cost_info
             return output
 
         return async_wrapper if iscoroutinefunction(func) else sync_wrapper
