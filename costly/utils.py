@@ -3,9 +3,6 @@ from typing import Any, Optional, Union, get_origin, get_args, Sequence, Mapping
 import json
 from pydantic import BaseModel
 
-class CostlyWarning(Warning):
-    pass
-
 
 def isinstance_better(v, t: type) -> bool:
 
@@ -28,12 +25,14 @@ def isinstance_better(v, t: type) -> bool:
         )
     return None
 
+
 def json_serializable(value):
     try:
         json.dumps(value)
         return True
     except (TypeError, ValueError):
         return False
+
 
 def make_json_serializable(value):
     if isinstance(value, dict):

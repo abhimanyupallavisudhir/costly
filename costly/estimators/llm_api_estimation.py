@@ -3,9 +3,9 @@ import logging
 from io import StringIO
 from pydantic import BaseModel
 import ast
-import warnings
-from costly.utils import CostlyWarning
 from unittest.mock import patch
+
+LOGGER = logging.getLogger(__name__)
 
 
 class LLM_API_Estimation:
@@ -122,7 +122,9 @@ class LLM_API_Estimation:
 
         matching_keys = [key for key in supported_models if model.startswith(key)]
         if not matching_keys:
-            warnings.warn(f"No matching model found for {model}. Assuming `__default__`.")
+            LOGGER.warning(
+                f"No matching model found for {model}. Assuming `__default__`."
+            )
             return "__default__"
 
         return max(matching_keys, key=len)
@@ -170,8 +172,7 @@ class LLM_API_Estimation:
 
     @classmethod
     def messages_to_input_tokens(
-        cls,
-        messages: list[dict[str, str]], model: str = None
+        cls, messages: list[dict[str, str]], model: str = None
     ) -> int:
         """Return the number of tokens used by a list of messages.
 
@@ -180,9 +181,8 @@ class LLM_API_Estimation:
         try:
             encoding = tiktoken.encoding_for_model(model)
         except KeyError:
-            warnings.warn(
+            LOGGER.warning(
                 "messages_to_input_tokens: model not found. Using cl100k_base encoding.",
-                CostlyWarning
             )
             encoding = tiktoken.get_encoding("cl100k_base")
         if model in {
@@ -201,29 +201,20 @@ class LLM_API_Estimation:
             )
             tokens_per_name = -1  # if there's a name, the role is omitted
         elif "gpt-3.5-turbo" in model:
-            warnings.warn(
+            LOGGER.warning(
                 "messages_to_input_tokens: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0613.",
-                CostlyWarning
             )
-            return cls.messages_to_input_tokens(
-                messages, model="gpt-3.5-turbo-0613"
-            )
+            return cls.messages_to_input_tokens(messages, model="gpt-3.5-turbo-0613")
         elif "gpt-4" in model:
-            warnings.warn(
+            LOGGER.warning(
                 "messages_to_input_tokens: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613.",
-                CostlyWarning
             )
-            return cls.messages_to_input_tokens(
-                messages, model="gpt-4-0613"
-            )
+            return cls.messages_to_input_tokens(messages, model="gpt-4-0613")
         else:
-            warnings.warn(
+            LOGGER.warning(
                 f"messages_to_input_tokens: model {model} not found. Returning num tokens assuming gpt-4-0613.",
-                CostlyWarning
             )
-            return cls.messages_to_input_tokens(
-                messages, model="gpt-4-0613"
-            )
+            return cls.messages_to_input_tokens(messages, model="gpt-4-0613")
         num_tokens = 0
         for message in messages:
             num_tokens += tokens_per_message
@@ -282,33 +273,26 @@ class LLM_API_Estimation:
         functions_tokens = 0
         functions_tokens += 12
         for function in functions:
-            function_tokens = cls.tokenize(
-                function["name"], model
-            ) + cls.tokenize(function["description"], model)
+            function_tokens = cls.tokenize(function["name"], model) + cls.tokenize(
+                function["description"], model
+            )
             if "parameters" in function:
                 parameters = function["parameters"]
                 if "properties" in parameters:
                     function_tokens += 11
                     properties = parameters["properties"]
                     for properties_key, properties_value in properties.items():
-                        function_tokens += cls.tokenize(
-                            properties_key, model
-                        )
+                        function_tokens += cls.tokenize(properties_key, model)
                         for field, field_value in properties_value.items():
                             if field == "type" or field == "description":
-                                function_tokens += (
-                                    cls.tokenize(field_value, model) + 2
-                                )
+                                function_tokens += cls.tokenize(field_value, model) + 2
                             elif field == "enum":
                                 function_tokens -= 3
                                 for o in field_value:
-                                    function_tokens += (
-                                        cls.tokenize(o, model) + 3
-                                    )
+                                    function_tokens += cls.tokenize(o, model) + 3
                             else:
-                                warnings.warn(
+                                LOGGER.warning(
                                     f"Field {field} not found in tokenization function",
-                                    CostlyWarning
                                 )
             functions_tokens += function_tokens
 
@@ -324,11 +308,12 @@ class LLM_API_Estimation:
         process=True,
         **kwargs,  # just let people pass in whatever they want
     ) -> str | dict:
-        
+
         import instructor
         from openai import OpenAI
-        client = instructor.from_openai(OpenAI(api_key='MOCK'))
-        
+
+        client = instructor.from_openai(OpenAI(api_key="MOCK"))
+
         if isinstance(messages, str):
             messages = [{"content": messages, "role": "user"}]
         log_stream = StringIO()
@@ -350,7 +335,7 @@ class LLM_API_Estimation:
                 # there WILL be an error
                 # there's nothing you can do about it
                 pass  # cope and seethe
-        
+
         log_contents = log_stream.getvalue()
         for line in log_contents.splitlines():
             if "Instructor Request" in line:
@@ -359,21 +344,19 @@ class LLM_API_Estimation:
                     return cls._process_raw_prompt(line)
                 return line
 
-        warnings.warn(
+        LOGGER.warning(
             "No raw prompt found in logs. Maybe anthropic "
             "isn't supported or something idk",
-            CostlyWarning
         )
-        return ""        
+        return ""
 
     @classmethod
     def _process_raw_prompt(cls, input_string: str) -> dict:
         # Step 1: Split at 'new_kwargs='
         split_parts = input_string.split("new_kwargs=", 1)
         if len(split_parts) < 2:
-            warnings.warn(
+            LOGGER.warning(
                 "Failed to split the string at 'new_kwargs='. Returning the original string.",
-                CostlyWarning
             )
             return input_string
 
@@ -383,9 +366,8 @@ class LLM_API_Estimation:
         dict_data = ast.literal_eval(dict_string)
 
         if not isinstance(dict_data, dict):
-            warnings.warn(
+            LOGGER.warning(
                 f"Decoded object is not a dictionary, but a {type(dict_data)}.",
-                CostlyWarning
             )
 
         return dict_data
@@ -448,9 +430,7 @@ class LLM_API_Estimation:
                 if input_string is not None:
                     input_tokens = cls.tokenize(input_string, model)
                 else:
-                    input_tokens = cls.messages_to_input_tokens(
-                        messages, model
-                    )
+                    input_tokens = cls.messages_to_input_tokens(messages, model)
             except:
                 raise ValueError(
                     f"Failed to tokenize input_string {input_string} or messages {messages}"
@@ -462,13 +442,11 @@ class LLM_API_Estimation:
                 output_tokens_min, output_tokens_max = output_tokens, output_tokens
             except:
                 try:
-                    output_tokens_min, output_tokens_max = (
-                        cls.output_tokens_estimate(
-                            input_string=input_string,
-                            messages=messages,
-                            input_tokens=input_tokens,
-                            model=model,
-                        )
+                    output_tokens_min, output_tokens_max = cls.output_tokens_estimate(
+                        input_string=input_string,
+                        messages=messages,
+                        input_tokens=input_tokens,
+                        model=model,
                     )
                 except:
                     raise ValueError(
@@ -489,16 +467,14 @@ class LLM_API_Estimation:
         output_string: str = None,
         **kwargs,
     ) -> dict[str, float]:
-        input_tokens, output_tokens_min, output_tokens_max = (
-            cls._get_tokens(
-                model=model,
-                input_tokens=input_tokens,
-                output_tokens_min=output_tokens_min,
-                output_tokens_max=output_tokens_max,
-                input_string=input_string,
-                messages=messages,
-                output_string=output_string,
-            )
+        input_tokens, output_tokens_min, output_tokens_max = cls._get_tokens(
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens_min=output_tokens_min,
+            output_tokens_max=output_tokens_max,
+            input_string=input_string,
+            messages=messages,
+            output_string=output_string,
         )
         return cls._get_cost_simulating_from_input_tokens_output_tokens(
             input_tokens=input_tokens,
@@ -513,8 +489,7 @@ class LLM_API_Estimation:
 
     @classmethod
     def _get_cost_real_from_input_tokens_output_tokens_timer(
-        cls,
-        input_tokens: int, output_tokens: int, timer: float, model: str, **kwargs
+        cls, input_tokens: int, output_tokens: int, timer: float, model: str, **kwargs
     ) -> dict[str, float]:
         prices = cls.get_prices(model)
         cost_input_tokens = input_tokens * prices["input_tokens"]
