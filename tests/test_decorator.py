@@ -231,6 +231,7 @@ async def test_chatgpt_instructor_async():
     assert len(costlog.items) == 2
     assert costlog.totals["calls"] == 2
 
+
 @pytest.mark.asyncio
 async def test_chatgpt_async_parallel():
     costlog = Costlog()
@@ -239,16 +240,21 @@ async def test_chatgpt_async_parallel():
         [{"role": "user", "content": "Explain quantum computing"}],
         [{"role": "user", "content": "Describe the water cycle"}],
     ]
-    
-    results = await asyncio.gather(*[
-        chatgpt_async(messages=msg, model="gpt-4o-mini", cost_log=costlog, simulate=False)
-        for msg in messages
-    ])
-    
+
+    results = await asyncio.gather(
+        *[
+            chatgpt_async(
+                messages=msg, model="gpt-4o-mini", cost_log=costlog, simulate=False
+            )
+            for msg in messages
+        ]
+    )
+
     assert len(results) == 3
     assert all(isinstance(result, str) for result in results)
     assert len(costlog.items) == 3
     assert costlog.totals["calls"] == 3
+
 
 @pytest.mark.asyncio
 async def test_chatgpt2_async_parallel():
@@ -258,16 +264,21 @@ async def test_chatgpt2_async_parallel():
         [{"role": "user", "content": "Explain photosynthesis"}],
         [{"role": "user", "content": "Describe the solar system"}],
     ]
-    
-    results = await asyncio.gather(*[
-        chatgpt2_async(history=hist, model_name="gpt-4o-mini", cost_log=costlog, simulate=False)
-        for hist in histories
-    ])
-    
+
+    results = await asyncio.gather(
+        *[
+            chatgpt2_async(
+                history=hist, model_name="gpt-4o-mini", cost_log=costlog, simulate=False
+            )
+            for hist in histories
+        ]
+    )
+
     assert len(results) == 3
     assert all(isinstance(result, str) for result in results)
     assert len(costlog.items) == 3
     assert costlog.totals["calls"] == 3
+
 
 @pytest.mark.asyncio
 async def test_chatgpt_prompt_async_parallel():
@@ -277,16 +288,21 @@ async def test_chatgpt_prompt_async_parallel():
         "Explain the theory of relativity",
         "Describe the process of photosynthesis",
     ]
-    
-    results = await asyncio.gather(*[
-        chatgpt_prompt_async(prompt=prompt, model="gpt-4o-mini", cost_log=costlog, simulate=False)
-        for prompt in prompts
-    ])
-    
+
+    results = await asyncio.gather(
+        *[
+            chatgpt_prompt_async(
+                prompt=prompt, model="gpt-4o-mini", cost_log=costlog, simulate=False
+            )
+            for prompt in prompts
+        ]
+    )
+
     assert len(results) == 3
     assert all(isinstance(result, str) for result in results)
     assert len(costlog.items) == 3
     assert costlog.totals["calls"] == 3
+
 
 @pytest.mark.asyncio
 async def test_chatgpt_instructor_async_parallel():
@@ -296,46 +312,49 @@ async def test_chatgpt_instructor_async_parallel():
         [{"role": "user", "content": "Generate a person named Bob"}],
         [{"role": "user", "content": "Generate a person named Charlie"}],
     ]
-    
-    results = await asyncio.gather(*[
-        chatgpt_instructor_async(
-            messages=msgs,
-            model="gpt-4o-mini",
-            client=CLIENT_ASYNC,
-            response_model=PERSONINFO,
-            cost_log=costlog,
-            simulate=False
-        )
-        for msgs in messages_list
-    ])
-    
+
+    results = await asyncio.gather(
+        *[
+            chatgpt_instructor_async(
+                messages=msgs,
+                model="gpt-4o-mini",
+                client=CLIENT_ASYNC,
+                response_model=PERSONINFO,
+                cost_log=costlog,
+                simulate=False,
+            )
+            for msgs in messages_list
+        ]
+    )
+
     assert len(results) == 3
     assert all(isinstance(result, PERSONINFO) for result in results)
     assert len(costlog.items) == 3
     assert costlog.totals["calls"] == 3
 
+
 @pytest.mark.asyncio
 async def test_mixed_async_parallel():
     costlog = Costlog()
-    
+
     results = await asyncio.gather(
         chatgpt_async(
             messages=[{"role": "user", "content": "Write a short story"}],
             model="gpt-4o-mini",
             cost_log=costlog,
-            simulate=False
+            simulate=False,
         ),
         chatgpt2_async(
             history=[{"role": "user", "content": "Explain quantum computing"}],
             model_name="gpt-4o-mini",
             cost_log=costlog,
-            simulate=False
+            simulate=False,
         ),
         chatgpt_prompt_async(
             prompt="Describe the water cycle",
             model="gpt-4o-mini",
             cost_log=costlog,
-            simulate=False
+            simulate=False,
         ),
         chatgpt_instructor_async(
             messages=[{"role": "user", "content": "Generate a person named David"}],
@@ -343,10 +362,10 @@ async def test_mixed_async_parallel():
             client=CLIENT_ASYNC,
             response_model=PERSONINFO,
             cost_log=costlog,
-            simulate=False
-        )
+            simulate=False,
+        ),
     )
-    
+
     assert len(results) == 4
     assert isinstance(results[0], str)
     assert isinstance(results[1], str)

@@ -1,5 +1,6 @@
 import os
 import datetime
+import json
 import jsonlines
 import time
 import asyncio
@@ -17,15 +18,17 @@ class Costlog(dict):
         path: Path | str = None,
         mode: Literal["jsonl", "memory"] = "memory",
         totals_keys: set[str] = None,
+        discard_extras: bool = True,
         overwrite: bool = None,
     ):
         """
         Arguments:
-            path: Path to the costlog file. If None, the costlog will be stored in
+            path: Path to the costlog file, if in jsonl mode. If None, the costlog will be stored in
                 the current working directory in a folder called ".costly".
             mode: "jsonl" or "memory". "jsonl" will store the costlog in a jsonl file,
                 "memory" will store the costlog in memory which may not be suitable for large logs.
             totals_keys: The keys to store in the totals.
+            discard_extras: If True, extra keys in the costlog items will be discarded.
             overwrite: If the costlog file already exists, overwrite it. If None, the user will be asked. Only relevant if mode is "jsonl".
         """
         match mode:
@@ -53,6 +56,10 @@ class Costlog(dict):
                     self.path.parent.mkdir(parents=True, exist_ok=True)
                     with open(self.path, "w") as f:
                         jsonlines.Writer(f)
+                self.totals_path = self.path.with_suffix(".totals.json")
+                self.totals_by_model_path = self.path.with_suffix(
+                    ".totals_by_model.json"
+                )
             case "memory":
                 self.items = []
             case _:
@@ -70,6 +77,8 @@ class Costlog(dict):
                 "output_tokens_max",
             }
         self.totals_keys = totals_keys
+        self.acceptable_keys = totals_keys | {"model", "simulated", "cost", "time"}
+        self.discard_extras = discard_extras
         self.totals = {key: 0.0 for key in totals_keys}
         self.totals_by_model = {}
         super().__init__(self.totals)
@@ -90,12 +99,19 @@ class Costlog(dict):
             self.totals_by_model[kwargs.get("model", "__UNKNOWN__")][key] += kwargs.get(
                 key, 0.0
             )
+        if self.mode == "jsonl":
+            with open(self.totals_path, "w") as f:
+                json.dump(self.totals, f)
+            with open(self.totals_by_model_path, "w") as f:
+                json.dump(self.totals_by_model, f)
 
     @contextmanager
     def new_item(self):
         item = {}
         t1 = time.perf_counter()
         yield item, lambda: time.perf_counter() - t1
+        if self.discard_extras:
+            item = {key: item[key] for key in item if key in self.acceptable_keys}
         self.append(**item)
 
     @asynccontextmanager
@@ -103,6 +119,8 @@ class Costlog(dict):
         item = {}
         t1 = time.perf_counter()
         yield item, lambda: time.perf_counter() - t1
+        if self.discard_extras:
+            item = {key: item[key] for key in item if key in self.acceptable_keys}
         self.append(**item)
 
     def totals_from_items(self):
