@@ -8,8 +8,8 @@ simulate = False
 def chatgpt(
     messages: list[dict[str, str]],
     model: str,
-    cost_log: Costlog = cost_log,
-    simulate: bool = simulate,
+    cost_log: Costlog = "cost_log",
+    simulate: bool = "simulate",
 ) -> str:
     from openai import OpenAI
 
