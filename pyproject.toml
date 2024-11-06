@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "costly"
-version = "2.2.0"
+version = "2.2.1"
 description = "Estimate costs and running times of complex LLM workflows/experiments/pipelines in advance before spending money, via simulations."
 authors = ["abhimanyu <abhimanyupallavisudhir@gmail.com>"]
 readme = "README.md"

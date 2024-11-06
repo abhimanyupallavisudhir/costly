@@ -101,9 +101,9 @@ class Costlog(dict):
             )
         if self.mode == "jsonl":
             with open(self.totals_path, "w") as f:
-                json.dump(self.totals, f)
+                json.dump(self.totals, f, indent=4)
             with open(self.totals_by_model_path, "w") as f:
-                json.dump(self.totals_by_model, f)
+                json.dump(self.totals_by_model, f, indent=4)
 
     @contextmanager
     def new_item(self):
