@@ -25,7 +25,7 @@ def costly(
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
             if disable_costly:
-                output = await func(*args, **options)
+                output = await func(*args, **kwargs)
                 if isinstance(output, CostlyResponse):
                     output, cost_info = output.output, output.cost_info
                 return output
