@@ -96,7 +96,7 @@ class LLM_API_Estimation:
 
     PRICES = LITELLM_PRICES | {
         "__default__": {
-            "input_cost_per_token": 5.0e-6,
+            "input_cost_per_token": 5.0e-6,                                          
             "output_cost_per_token": 15.0e-6,
         },
     }

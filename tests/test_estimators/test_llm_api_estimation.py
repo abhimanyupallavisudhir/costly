@@ -54,10 +54,23 @@ PARAMSS_INSTRUCTOR = {
     for model in MODELS_OPENAI
 }
 
-
-def check_obvious_things():
-    for MODEL in MODELS:
-        assert MODEL in LLM_API_Estimation.PRICES
+@pytest.mark.parametrize("model", MODELS)
+def check_obvious_things(model):
+    assert model in LLM_API_Estimation.PRICES
+    assert LLM_API_Estimation.get_model(model) == model
+    all_matches = LLM_API_Estimation.get_model(model, return_all_matches=True)
+    assert isinstance(all_matches, list)
+    assert all_matches[0] == model
+    assert all_matches[-1] == "__default__"
+    prices = LLM_API_Estimation.get_prices(model)
+    assert isinstance(prices, dict)
+    assert "input_cost_per_token" in prices
+    assert "output_cost_per_token" in prices
+    assert "time" in prices
+    if model in LLM_API_Estimation.TIMES:
+        assert prices["time"] == LLM_API_Estimation.TIMES[model]
+    if model.startswith("claude"): # temporary thing
+        assert prices["time"] == LLM_API_Estimation.TIMES["__default__"]
 
 def check_cost_estimates(real_cost, sim_cost):
     print("real_cost", real_cost)
