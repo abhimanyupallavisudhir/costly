@@ -55,6 +55,10 @@ PARAMSS_INSTRUCTOR = {
 }
 
 
+def check_obvious_things():
+    for MODEL in MODELS:
+        assert MODEL in LLM_API_Estimation.PRICES
+
 def check_cost_estimates(real_cost, sim_cost):
     print("real_cost", real_cost)
     print("sim_cost", sim_cost)

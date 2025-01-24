@@ -121,8 +121,10 @@ class LLM_API_Estimation:
         matching_keys.append("__default__")
 
         if return_all_matches:
+            # replace __default__ with empty string ""  for sorting
+            matching_keys = ["" if key == "__default__" else key for key in matching_keys]
             all_matches = sorted(matching_keys, key=len, reverse=True)
-            assert len(all_matches[0]) >= len(all_matches[-1]) or all_matches[-1] == "__default__"
+            all_matches = ["__default__" if key == "" else key for key in all_matches]
             return all_matches
         # replace __default__ with empty string ""  for sorting
         matching_keys = ["" if key == "__default__" else key for key in matching_keys]
@@ -149,7 +151,8 @@ class LLM_API_Estimation:
                     if matching_model != model:
                         LOGGER.warning(
                             f"Key {key} not found in model {model}."
-                            f" Assuming {key}: {value} from model {matching_model}"
+                            f" Assuming {key}: {value} from model {matching_model}."
+                            f" All matches: {pricess}"
                         )
         return correct_prices
 
