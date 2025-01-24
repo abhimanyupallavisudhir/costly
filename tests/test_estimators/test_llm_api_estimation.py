@@ -25,7 +25,7 @@ PROMPTS = [
     "Write the bubblesort algorithm in Python.",
 ]
 MESSAGESS = [[{"content": prompt, "role": "user"}] for prompt in PROMPTS]
-MODELS = LLM_API_Estimation.PRICES.keys()  # TODO implement tests for non-OpenAI models
+MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo", "claude-3-5-sonnet-20240620", "claude-3-5-sonnet-20241022"]
 MODELS_OPENAI = [model for model in MODELS if model.startswith("gpt")]
 PARAMSS = [
     {"messages": messages, "model": model}
