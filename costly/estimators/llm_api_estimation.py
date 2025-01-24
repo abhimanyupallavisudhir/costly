@@ -4,6 +4,9 @@ from io import StringIO
 from pydantic import BaseModel
 import ast
 from unittest.mock import patch
+from importlib.resources import files
+import json
+import litellm
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,66 +59,56 @@ class LLM_API_Estimation:
       LLM API calls), maybe just define a new class
     """
 
-    PRICES = {
+    LITELLM_PRICES_FILE = files("litellm").joinpath(
+        "model_prices_and_context_window_backup.json"
+    )
+    with open(LITELLM_PRICES_FILE) as f:
+        LITELLM_PRICES = json.load(f)
+
+    assert isinstance(LITELLM_PRICES, dict)
+
+    TIMES = {
         "__default__": {
-            "input_tokens": 5.0e-6,
-            "output_tokens": 15.0e-6,
             "time": 18e-3,
         },
         "gpt-4o": {
-            "input_tokens": 5.0e-6,
-            "output_tokens": 15.0e-6,
             "time": 18e-3,
         },
         "gpt-4o-2024-08-06": {
-            "input_tokens": 2.50e-6,
-            "output_tokens": 10.0e-6,
             "time": 18e-3,
         },
         "gpt-4o-mini": {
-            "input_tokens": 0.15e-6,
-            "output_tokens": 0.6e-6,
             "time": 9e-3,
         },
         "gpt-4-turbo": {
-            "input_tokens": 10.0e-6,
-            "output_tokens": 30.0e-6,
             "time": 36e-3,
         },
         "gpt-4": {
-            "input_tokens": 30.0e-6,
-            "output_tokens": 60.0e-6,
             "time": 36e-3,
         },
         "gpt-3.5-turbo": {
-            "input_tokens": 0.50e-6,
-            "output_tokens": 1.50e-6,
             "time": 36e-3,
-        },
-        "claude-3-5-sonnet": {
-            "input_tokens": 3.0e-6,
-            "output_tokens": 15.0e-6,
-            "time": 18e-3,
-        },
-        "claude-3-opus": {
-            "input_tokens": 15.0e-6,
-            "output_tokens": 75.0e-6,
-            "time": 18e-3,
-        },
-        "claude-3-haiku": {
-            "input_tokens": 0.25e-6,
-            "output_tokens": 1.25e-6,
-            "time": 9e-3,
         },
     }
     """
-    input_tokens: dollar per input token
-    output_tokens: dollar per output token
     time: seconds per output token
     """
 
+    PRICES = LITELLM_PRICES | {
+        "__default__": {
+            "input_cost_per_token": 5.0e-6,
+            "output_cost_per_token": 15.0e-6,
+        },
+    }
+
+    for model in TIMES:
+        if model in PRICES:
+            PRICES[model]["time"] = TIMES[model]["time"]
+
     @classmethod
-    def get_model(cls, model: str, supported_models: list = None):
+    def get_model(
+        cls, model: str, supported_models: list = None, return_all_matches: bool = False
+    ):
         """Get model in supported_models with the longest prefix matching model"""
         if supported_models is None:
             supported_models = cls.PRICES.keys()
@@ -125,9 +118,16 @@ class LLM_API_Estimation:
             LOGGER.warning(
                 f"No matching model found for {model}. Assuming `__default__`."
             )
-            return "__default__"
+        matching_keys.append("__default__")
 
-        return max(matching_keys, key=len)
+        if return_all_matches:
+            all_matches = sorted(matching_keys, key=len, reverse=True)
+            assert len(all_matches[0]) >= len(all_matches[-1]) or all_matches[-1] == "__default__"
+            return all_matches
+        # replace __default__ with empty string ""  for sorting
+        matching_keys = ["" if key == "__default__" else key for key in matching_keys]
+        best_match = max(matching_keys, key=len)
+        return "__default__" if best_match == "" else best_match
 
     @classmethod
     def get_prices(cls, model: str, price_dict: dict = None):
@@ -135,7 +135,23 @@ class LLM_API_Estimation:
         if price_dict is None:
             price_dict = cls.PRICES
 
-        return price_dict[cls.get_model(model, price_dict.keys())]
+        pricess = [
+            {"model": key, "prices": price_dict[key]}
+            for key in cls.get_model(model, price_dict.keys(), return_all_matches=True)
+        ]
+        correct_prices = {}
+        for i, model_prices in enumerate(pricess):
+            matching_model = model_prices["model"]
+            prices = model_prices["prices"]
+            for key, value in prices.items():
+                if key not in correct_prices:
+                    correct_prices[key] = value
+                    if matching_model != model:
+                        LOGGER.warning(
+                            f"Key {key} not found in model {model}."
+                            f" Assuming {key}: {value} from model {matching_model}"
+                        )
+        return correct_prices
 
     @classmethod
     def tokenize(cls, input_string: str, model: str) -> int:
@@ -308,7 +324,6 @@ class LLM_API_Estimation:
         process=True,
         **kwargs,  # just let people pass in whatever they want
     ) -> str | dict:
-
         import instructor
         from openai import OpenAI
 
@@ -394,9 +409,9 @@ class LLM_API_Estimation:
         **kwargs,
     ) -> dict[str, float]:
         prices = cls.get_prices(model)
-        cost_input_tokens = input_tokens * prices["input_tokens"]
-        cost_output_tokens_min = output_tokens_min * prices["output_tokens"]
-        cost_output_tokens_max = output_tokens_max * prices["output_tokens"]
+        cost_input_tokens = input_tokens * prices["input_cost_per_token"]
+        cost_output_tokens_min = output_tokens_min * prices["output_cost_per_token"]
+        cost_output_tokens_max = output_tokens_max * prices["output_cost_per_token"]
         time_min = output_tokens_min * prices["time"]
         time_max = output_tokens_max * prices["time"]
         return {
@@ -492,8 +507,8 @@ class LLM_API_Estimation:
         cls, input_tokens: int, output_tokens: int, timer: float, model: str, **kwargs
     ) -> dict[str, float]:
         prices = cls.get_prices(model)
-        cost_input_tokens = input_tokens * prices["input_tokens"]
-        cost_output_tokens = output_tokens * prices["output_tokens"]
+        cost_input_tokens = input_tokens * prices["input_cost_per_token"]
+        cost_output_tokens = output_tokens * prices["output_cost_per_token"]
         time = timer
         return {
             "cost_min": cost_input_tokens + cost_output_tokens,
