@@ -33,19 +33,24 @@ def costly(
             # Get the function's signature
             sig = signature(func)
 
-            # Create a dictionary with default values
-            options = {
-                k: v.default
-                for k, v in sig.parameters.items()
-                if v.default is not Parameter.empty
-            }
-
-            # Update default kwargs with provided kwargs
-            options.update(kwargs)
+            # Bind all arguments (positional and keyword) to the signature
+            bound_args = sig.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+            options = bound_args.arguments
 
             cost_log = options.pop("cost_log", None)
             simulate = options.pop("simulate", False)
             description = options.pop("description", None)
+
+            has_kwargs_param = any(
+                p.kind == Parameter.VAR_KEYWORD 
+                for p in sig.parameters.values()
+            )
+
+            # If function accepts **kwargs, merge the 'kwargs' key into main parameters
+            if has_kwargs_param:
+                extra_kwargs = options.pop("kwargs", {})
+                options.update(extra_kwargs)
 
             # apply param_mappings
             costly_kwargs = options | {
@@ -62,12 +67,12 @@ def costly(
                 return simulator(**simulator_kwargs)
 
             if cost_log is None:
-                output = await func(*args, **options)
+                output = await func(**options)
                 if isinstance(output, CostlyResponse):
                     output, cost_info = output.output, output.cost_info
             else:
                 async with cost_log.new_item_async() as (item, timer):
-                    output = await func(*args, **options)  # await the coroutine
+                    output = await func(**options)  # await the coroutine
                     cost_info = {}
                     if isinstance(output, CostlyResponse):
                         output, cost_info = output.output, output.cost_info
@@ -99,19 +104,25 @@ def costly(
             # Get the function's signature
             sig = signature(func)
 
-            # Create a dictionary with default values
-            options = {
-                k: v.default
-                for k, v in sig.parameters.items()
-                if v.default is not Parameter.empty
-            }
-
-            # Update default kwargs with provided kwargs
-            options.update(kwargs)
+            # Bind all arguments (positional and keyword) to the signature
+            bound_args = sig.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+            options = bound_args.arguments
 
             cost_log = options.pop("cost_log", None)
             simulate = options.pop("simulate", False)
             description = options.pop("description", None)
+
+            has_kwargs_param = any(
+                p.kind == Parameter.VAR_KEYWORD 
+                for p in sig.parameters.values()
+            )
+
+            # If function accepts **kwargs, merge the 'kwargs' key into main parameters
+            if has_kwargs_param:
+                extra_kwargs = options.pop("kwargs", {})
+                options.update(extra_kwargs)
+
 
             # apply param_mappings
             costly_kwargs = options | {
@@ -128,12 +139,12 @@ def costly(
                 return simulator(**simulator_kwargs)
 
             if cost_log is None:
-                output = func(*args, **options)
+                output = func(**options)
                 if isinstance(output, CostlyResponse):
                     output, cost_info = output.output, output.cost_info
             else:
                 with cost_log.new_item() as (item, timer):
-                    output = func(*args, **options)  # call function normally
+                    output = func(**options)  # call function normally
                     cost_info = {}
                     if isinstance(output, CostlyResponse):
                         output, cost_info = output.output, output.cost_info
