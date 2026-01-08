@@ -19,6 +19,7 @@ def costly(
     simulator: Callable = LLM_Simulator_Faker.simulate_llm_call,
     estimator: Callable = LLM_API_Estimation.get_cost_real,
     disable_costly: bool = False,
+    fast: bool = False,
     **param_mappings: dict[str, Callable],
 ):
     def decorator(func: Callable) -> Callable:
@@ -86,6 +87,7 @@ def costly(
                             "output_string": output,
                             "description": description,
                             "timer": timer(),
+                            "fast": fast,
                         }
                         | cost_info
                     )
@@ -158,6 +160,7 @@ def costly(
                             "output_string": output,
                             "description": description,
                             "timer": timer(),
+                            "fast": fast,
                         }
                         | cost_info
                     )

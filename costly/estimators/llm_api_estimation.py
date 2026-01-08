@@ -441,12 +441,18 @@ class LLM_API_Estimation:
         input_string: str = None,
         messages: list[dict[str, str]] = None,
         output_string: str = None,
+        fast: bool = False,
     ) -> tuple[int, int, int]:
+        tokenize_fn = cls._tokenize_rough if fast else cls.tokenize
         if input_tokens is None:
             try:
                 assert input_string is not None or messages is not None
                 if input_string is not None:
-                    input_tokens = cls.tokenize(input_string, model)
+                    input_tokens = tokenize_fn(input_string, model)
+                elif fast:
+                    # Fast mode: concatenate message content and use rough tokenizer
+                    combined = " ".join(m.get("content", "") for m in messages)
+                    input_tokens = tokenize_fn(combined, model)
                 else:
                     input_tokens = cls.messages_to_input_tokens(messages, model)
             except:
@@ -456,7 +462,7 @@ class LLM_API_Estimation:
         if output_tokens_min is None or output_tokens_max is None:
             try:
                 assert output_string is not None
-                output_tokens = cls.tokenize(output_string, model)
+                output_tokens = tokenize_fn(output_string, model)
                 output_tokens_min, output_tokens_max = output_tokens, output_tokens
             except:
                 try:
@@ -483,6 +489,7 @@ class LLM_API_Estimation:
         input_string: str = None,
         messages: list[dict[str, str]] = None,
         output_string: str = None,
+        fast: bool = False,
         **kwargs,
     ) -> dict[str, float]:
         input_tokens, output_tokens_min, output_tokens_max = cls._get_tokens(
@@ -493,6 +500,7 @@ class LLM_API_Estimation:
             input_string=input_string,
             messages=messages,
             output_string=output_string,
+            fast=fast,
         )
         return cls._get_cost_simulating_from_input_tokens_output_tokens(
             input_tokens=input_tokens,
@@ -538,6 +546,7 @@ class LLM_API_Estimation:
         messages: list[dict[str, str]] = None,
         output_string: str = None,
         timer: float = None,
+        fast: bool = False,
         **kwargs,
     ) -> dict[str, float]:
         assert timer is not None
@@ -549,6 +558,7 @@ class LLM_API_Estimation:
             input_string=input_string,
             messages=messages,
             output_string=output_string,
+            fast=fast,
         )
 
         return cls._get_cost_real_from_input_tokens_output_tokens_timer(
