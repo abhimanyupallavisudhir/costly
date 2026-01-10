@@ -4,8 +4,6 @@ from io import StringIO
 from pydantic import BaseModel
 import ast
 from unittest.mock import patch
-from importlib.resources import files
-import json
 import litellm
 
 LOGGER = logging.getLogger(__name__)
@@ -59,13 +57,9 @@ class LLM_API_Estimation:
       LLM API calls), maybe just define a new class
     """
 
-    LITELLM_PRICES_FILE = files("litellm").joinpath(
-        "model_prices_and_context_window_backup.json"
-    )
-    with open(LITELLM_PRICES_FILE) as f:
-        LITELLM_PRICES = json.load(f)
-
-    assert isinstance(LITELLM_PRICES, dict)
+    # Use litellm's runtime model_cost dict instead of the static backup JSON file,
+    # which can be outdated and missing newer models
+    LITELLM_PRICES = litellm.model_cost
 
     TIMES = {
         "__default__": {
