@@ -1,6 +1,6 @@
 [project]
 name = "costly"
-version = "2.3.5"
+version = "2.3.6"
 description = "Estimate costs and running times of complex LLM workflows/experiments/pipelines in advance before spending money, via simulations."
 authors = [{ name = "abhimanyu", email = "abhimanyupallavisudhir@gmail.com" }]
 requires-python = ">=3.11,<4"
