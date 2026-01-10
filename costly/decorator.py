@@ -64,7 +64,7 @@ def costly(
                     k: v
                     for k, v in costly_kwargs.items()
                     if k in signature(simulator).parameters
-                } | {"cost_log": cost_log, "description": description}
+                } | {"cost_log": cost_log, "description": description, "fast": fast}
                 return simulator(**simulator_kwargs)
 
             if cost_log is None:
@@ -137,7 +137,7 @@ def costly(
                     k: v
                     for k, v in costly_kwargs.items()
                     if k in signature(simulator).parameters
-                } | {"cost_log": cost_log, "description": description}
+                } | {"cost_log": cost_log, "description": description, "fast": fast}
                 return simulator(**simulator_kwargs)
 
             if cost_log is None:

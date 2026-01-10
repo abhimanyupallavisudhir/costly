@@ -72,6 +72,8 @@ class LLM_Simulator_Faker:
         _fake_custom: fake a value of a custom type
     """
 
+    ESTIMATOR = LLM_API_Estimation
+
     FAKER = Faker()
 
     FAKER_PARAMS = {
@@ -110,6 +112,7 @@ class LLM_Simulator_Faker:
         response_model: type = str,
         cost_log: Costlog = None,
         description: list[str] = None,
+        fast: bool = False,
     ) -> str | Any:
         """
         Simulate an LLM call.
@@ -119,12 +122,13 @@ class LLM_Simulator_Faker:
         if cost_log is not None:
             assert model is not None, "model is required for tracking costs"
             with cost_log.new_item() as (item, _):
-                cost_item = LLM_API_Estimation.get_cost_simulating(
+                cost_item = cls.ESTIMATOR.get_cost_simulating(
                     input_string=input_string,
                     input_tokens=input_tokens,
                     model=model,
                     messages=messages,
                     description=description,
+                    fast=fast,
                     # output_string=response, # not needed
                 )
                 item.update(cost_item)
@@ -140,6 +144,7 @@ class LLM_Simulator_Faker:
         model: str = None,
         cost_log: Costlog = None,
         description: list[str] = None,
+        fast: bool = False,
     ) -> dict[str, float]:
         """
         Simulate a dict with keys as return_probs_for and values as probabilities.
@@ -150,7 +155,7 @@ class LLM_Simulator_Faker:
         if cost_log is not None:
             assert model is not None, "model is required for tracking costs"
             with cost_log.new_item() as (item, _):
-                cost_item = LLM_API_Estimation.get_cost_simulating(
+                cost_item = cls.ESTIMATOR.get_cost_simulating(
                     input_string=input_string,
                     input_tokens=input_tokens,
                     output_tokens_min=0,
@@ -158,6 +163,7 @@ class LLM_Simulator_Faker:
                     model=model,
                     messages=messages,
                     description=description,
+                    fast=fast,
                 )
                 item.update(cost_item)
         return probs
