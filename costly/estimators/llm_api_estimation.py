@@ -1,5 +1,6 @@
 import tiktoken
 import logging
+from functools import lru_cache
 from io import StringIO
 from pydantic import BaseModel
 import ast
@@ -7,6 +8,20 @@ from unittest.mock import patch
 import litellm
 
 LOGGER = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=None)
+def _get_encoding(model: str):
+    """Return (and cache) the tiktoken encoding for a model name.
+
+    Falls back to the ``cl100k_base`` encoding when the model is unknown.
+    Caching avoids repeated, relatively expensive registry lookups on hot
+    tokenization paths.
+    """
+    try:
+        return tiktoken.encoding_for_model(model)
+    except Exception:
+        return tiktoken.get_encoding("cl100k_base")
 
 
 class LLM_API_Estimation:
@@ -95,9 +110,12 @@ class LLM_API_Estimation:
         },
     }
 
+    # NB: `LITELLM_PRICES | {...}` creates a new top-level dict but shares the
+    # inner per-model dict objects with ``litellm.model_cost``. Reassign a fresh
+    # dict for each mutated model so we don't pollute litellm's global state.
     for model in TIMES:
         if model in PRICES:
-            PRICES[model]["time"] = TIMES[model]["time"]
+            PRICES[model] = {**PRICES[model], "time": TIMES[model]["time"]}
 
     @classmethod
     def get_model(
@@ -160,18 +178,13 @@ class LLM_API_Estimation:
             "text-embedding-3-small",
             "text-embedding-3-large",
         ]
-        try:
-            encoding = tiktoken.encoding_for_model(
-                cls.get_model(model, supported_models)
-            )
-        except:
-            encoding = tiktoken.get_encoding("cl100k_base")
+        encoding = _get_encoding(cls.get_model(model, supported_models))
         return len(encoding.encode(input_string))
 
     @classmethod
     def _tokenize_rough(cls, input_string: str, model: str = None) -> int:
         "For a quick estimate, just divide by 4.5"
-        return len(input_string) // 4.5
+        return int(len(input_string) / 4.5)
 
     @classmethod
     def output_tokens_estimate(
@@ -191,13 +204,7 @@ class LLM_API_Estimation:
 
         From: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
         """
-        try:
-            encoding = tiktoken.encoding_for_model(model)
-        except KeyError:
-            LOGGER.warning(
-                "messages_to_input_tokens: model not found. Using cl100k_base encoding.",
-            )
-            encoding = tiktoken.get_encoding("cl100k_base")
+        encoding = _get_encoding(model)
         if model in {
             "gpt-3.5-turbo-0613",
             "gpt-3.5-turbo-16k-0613",
