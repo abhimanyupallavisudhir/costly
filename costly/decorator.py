@@ -1,12 +1,14 @@
-import asyncio
 from functools import wraps
 from dataclasses import dataclass
-from copy import deepcopy
 from typing import Callable, Any
-from costly.costlog import Costlog
 from costly.simulators.llm_simulator_faker import LLM_Simulator_Faker
 from costly.estimators.llm_api_estimation import LLM_API_Estimation
 from inspect import signature, Parameter, iscoroutinefunction
+
+
+# Control parameters consumed by `costly` itself. They may be passed to any
+# decorated function regardless of whether the function declares them.
+_CONTROL_PARAMS = ("cost_log", "simulate", "description")
 
 
 @dataclass
@@ -22,76 +24,107 @@ def costly(
     fast: bool = False,
     **param_mappings: dict[str, Callable],
 ):
+    # Compute the accepted parameter names of the simulator/estimator once, since
+    # they are fixed for a given decorator application.
+    simulator_params = set(signature(simulator).parameters)
+    estimator_params = set(signature(estimator).parameters)
+
     def decorator(func: Callable) -> Callable:
-        @wraps(func)
-        async def async_wrapper(*args, **kwargs):
-            if disable_costly:
-                output = await func(*args, **kwargs)
-                if isinstance(output, CostlyResponse):
-                    output, cost_info = output.output, output.cost_info
-                return output
+        # Cache signature-derived metadata once at decoration time instead of
+        # recomputing it on every call.
+        sig = signature(func)
+        func_params = sig.parameters
+        var_keyword_name = next(
+            (
+                name
+                for name, p in func_params.items()
+                if p.kind == Parameter.VAR_KEYWORD
+            ),
+            None,
+        )
 
-            # Get the function's signature
-            sig = signature(func)
+        def prepare(args: tuple, kwargs: dict):
+            """Bind call arguments and split out costly's control parameters.
 
-            # Bind all arguments (positional and keyword) to the signature
+            Control parameters (cost_log/simulate/description) may be supplied
+            even when the decorated function does not declare them, so they are
+            removed before binding against the real signature.
+            """
+            kwargs = dict(kwargs)
+            popped = {
+                name: kwargs.pop(name)
+                for name in _CONTROL_PARAMS
+                if name not in func_params and name in kwargs
+            }
+
             bound_args = sig.bind(*args, **kwargs)
             bound_args.apply_defaults()
             options = bound_args.arguments
 
-            cost_log = options.pop("cost_log", None)
-            simulate = options.pop("simulate", False)
-            description = options.pop("description", None)
+            cost_log = popped.get("cost_log", options.pop("cost_log", None))
+            simulate = popped.get("simulate", options.pop("simulate", False))
+            description = popped.get("description", options.pop("description", None))
 
-            has_kwargs_param = any(
-                p.kind == Parameter.VAR_KEYWORD 
-                for p in sig.parameters.values()
-            )
-
-            # If function accepts **kwargs, merge the 'kwargs' key into main parameters
-            if has_kwargs_param:
-                extra_kwargs = options.pop("kwargs", {})
-                options.update(extra_kwargs)
+            # If the function accepts **kwargs, flatten those extra keyword
+            # arguments back into the main options mapping.
+            if var_keyword_name is not None:
+                options.update(options.pop(var_keyword_name, {}))
 
             # apply param_mappings
             costly_kwargs = options | {
                 key: mapping(options) if callable(mapping) else options.get(mapping)
                 for key, mapping in param_mappings.items()
             }
+            return options, costly_kwargs, cost_log, simulate, description
+
+        def simulator_call(costly_kwargs, cost_log, description):
+            simulator_kwargs = {
+                k: v for k, v in costly_kwargs.items() if k in simulator_params
+            } | {"cost_log": cost_log, "description": description, "fast": fast}
+            return simulator(**simulator_kwargs)
+
+        def build_estimator_kwargs(costly_kwargs, output, description, timer, cost_info):
+            return (
+                {k: v for k, v in costly_kwargs.items() if k in estimator_params}
+                | {
+                    "output_string": output,
+                    "description": description,
+                    "timer": timer,
+                    "fast": fast,
+                }
+                | cost_info
+            )
+
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            if disable_costly:
+                output = await func(*args, **kwargs)
+                if isinstance(output, CostlyResponse):
+                    output = output.output
+                return output
+
+            options, costly_kwargs, cost_log, simulate, description = prepare(
+                args, kwargs
+            )
 
             if simulate:
-                simulator_kwargs = {
-                    k: v
-                    for k, v in costly_kwargs.items()
-                    if k in signature(simulator).parameters
-                } | {"cost_log": cost_log, "description": description, "fast": fast}
-                return simulator(**simulator_kwargs)
+                return simulator_call(costly_kwargs, cost_log, description)
 
             if cost_log is None:
                 output = await func(**options)
                 if isinstance(output, CostlyResponse):
-                    output, cost_info = output.output, output.cost_info
+                    output = output.output
             else:
                 async with cost_log.new_item_async() as (item, timer):
                     output = await func(**options)  # await the coroutine
                     cost_info = {}
                     if isinstance(output, CostlyResponse):
                         output, cost_info = output.output, output.cost_info
-                    estimator_kwargs = (
-                        {
-                            k: v
-                            for k, v in costly_kwargs.items()
-                            if k in signature(estimator).parameters
-                        }
-                        | {
-                            "output_string": output,
-                            "description": description,
-                            "timer": timer(),
-                            "fast": fast,
-                        }
-                        | cost_info
+                    cost_item = estimator(
+                        **build_estimator_kwargs(
+                            costly_kwargs, output, description, timer(), cost_info
+                        )
                     )
-                    cost_item = estimator(**estimator_kwargs)
                     item.update(cost_item)
             return output
 
@@ -100,71 +133,31 @@ def costly(
             if disable_costly:
                 output = func(*args, **kwargs)
                 if isinstance(output, CostlyResponse):
-                    output, cost_info = output.output, output.cost_info
+                    output = output.output
                 return output
 
-            # Get the function's signature
-            sig = signature(func)
-
-            # Bind all arguments (positional and keyword) to the signature
-            bound_args = sig.bind(*args, **kwargs)
-            bound_args.apply_defaults()
-            options = bound_args.arguments
-
-            cost_log = options.pop("cost_log", None)
-            simulate = options.pop("simulate", False)
-            description = options.pop("description", None)
-
-            has_kwargs_param = any(
-                p.kind == Parameter.VAR_KEYWORD 
-                for p in sig.parameters.values()
+            options, costly_kwargs, cost_log, simulate, description = prepare(
+                args, kwargs
             )
 
-            # If function accepts **kwargs, merge the 'kwargs' key into main parameters
-            if has_kwargs_param:
-                extra_kwargs = options.pop("kwargs", {})
-                options.update(extra_kwargs)
-
-
-            # apply param_mappings
-            costly_kwargs = options | {
-                key: mapping(options) if callable(mapping) else options.get(mapping)
-                for key, mapping in param_mappings.items()
-            }
-
             if simulate:
-                simulator_kwargs = {
-                    k: v
-                    for k, v in costly_kwargs.items()
-                    if k in signature(simulator).parameters
-                } | {"cost_log": cost_log, "description": description, "fast": fast}
-                return simulator(**simulator_kwargs)
+                return simulator_call(costly_kwargs, cost_log, description)
 
             if cost_log is None:
                 output = func(**options)
                 if isinstance(output, CostlyResponse):
-                    output, cost_info = output.output, output.cost_info
+                    output = output.output
             else:
                 with cost_log.new_item() as (item, timer):
                     output = func(**options)  # call function normally
                     cost_info = {}
                     if isinstance(output, CostlyResponse):
                         output, cost_info = output.output, output.cost_info
-                    estimator_kwargs = (
-                        {
-                            k: v
-                            for k, v in costly_kwargs.items()
-                            if k in signature(estimator).parameters
-                        }
-                        | {
-                            "output_string": output,
-                            "description": description,
-                            "timer": timer(),
-                            "fast": fast,
-                        }
-                        | cost_info
+                    cost_item = estimator(
+                        **build_estimator_kwargs(
+                            costly_kwargs, output, description, timer(), cost_info
+                        )
                     )
-                    cost_item = estimator(**estimator_kwargs)
                     item.update(cost_item)
             return output
 

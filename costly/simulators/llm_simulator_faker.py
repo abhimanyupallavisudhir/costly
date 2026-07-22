@@ -168,11 +168,20 @@ class LLM_Simulator_Faker:
                 item.update(cost_item)
         return probs
 
+    # Cache of tryfuncs sorted by priority, keyed by the identity of the
+    # (class-level) tryfuncs list so subclasses and runtime overrides are
+    # respected without re-sorting on every (recursive) fake() call.
+    _sorted_tryfuncs_cache: dict = {}
+
     @classmethod
     def fake(cls, t: type):
-        try_funcs_in_order = sorted(
-            cls.tryfuncs, key=lambda x: x["priority"], reverse=True
-        )
+        cache_key = id(cls.tryfuncs)
+        try_funcs_in_order = cls._sorted_tryfuncs_cache.get(cache_key)
+        if try_funcs_in_order is None:
+            try_funcs_in_order = sorted(
+                cls.tryfuncs, key=lambda x: x["priority"], reverse=True
+            )
+            cls._sorted_tryfuncs_cache[cache_key] = try_funcs_in_order
         exceptions = []
         for try_func in try_funcs_in_order:
             try:
